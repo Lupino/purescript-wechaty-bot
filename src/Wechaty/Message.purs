@@ -14,7 +14,7 @@ import Prelude
 import Data.Maybe (Maybe (..), isJust, fromJust, isNothing)
 import Partial.Unsafe (unsafePartial)
 import Control.Promise (Promise, toAff)
-import Wechaty.Types
+import Wechaty.Types (Contact, ContactM, Message, MessageM, Room, RoomM, runContactM, runRoomM)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Class (liftEff)
