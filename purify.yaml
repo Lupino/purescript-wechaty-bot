@@ -1,0 +1,341 @@
+output-file: index.js
+extra-deps:
+- name: purescript-aff
+  deps:
+  - purescript-free
+  - purescript-exceptions
+  - purescript-console
+  - purescript-type-equality
+  - purescript-avar
+  - purescript-st
+  - purescript-unsafe-coerce
+  - purescript-transformers
+  - purescript-parallel
+  - purescript-datetime
+  - purescript-functions
+  repo: https://github.com/slamdata/purescript-aff
+  commit: aaf98f9f03cb542b26791da64d12a89ea92b82ef
+- name: purescript-aff-promise
+  deps:
+  - purescript-aff
+  - purescript-foreign
+  repo: https://github.com/nwolverson/purescript-aff-promise
+  commit: bee038b89e300f23ffb2075c4f5419a2891ea225
+- name: purescript-arrays
+  deps:
+  - purescript-unfoldable
+  - purescript-foldable-traversable
+  - purescript-tailrec
+  - purescript-st
+  - purescript-nonempty
+  - purescript-unsafe-coerce
+  - purescript-tuples
+  - purescript-partial
+  repo: https://github.com/purescript/purescript-arrays
+  commit: d451e5669dd2b77f9abd6f38a95a5f522dacb8e9
+- name: purescript-avar
+  deps:
+  - purescript-exceptions
+  - purescript-either
+  - purescript-maybe
+  - purescript-eff
+  - purescript-functions
+  repo: https://github.com/slamdata/purescript-avar
+  commit: bf4fe9c85e23c1ac1ab8a2d3120554898ee1d0c5
+- name: purescript-bifunctors
+  deps:
+  - purescript-newtype
+  - purescript-control
+  repo: https://github.com/purescript/purescript-bifunctors
+  commit: 326586882af8987d560a183af7142de9582282c8
+- name: purescript-catenable-lists
+  deps:
+  - purescript-control
+  - purescript-unfoldable
+  - purescript-foldable-traversable
+  - purescript-tuples
+  - purescript-lists
+  repo: https://github.com/purescript/purescript-catenable-lists
+  commit: 9c351e502f80a4a58598a2fbe756f21e55b78a6e
+- name: purescript-console
+  deps:
+  - purescript-eff
+  repo: https://github.com/purescript/purescript-console
+  commit: 36eb19ee6ed578cbec480cd89cd5b2285984ead6
+- name: purescript-const
+  deps:
+  - purescript-foldable-traversable
+  - purescript-contravariant
+  repo: https://github.com/purescript/purescript-const
+  commit: 01cfb04a99d77d835e99eb5bf33de8a763814285
+- name: purescript-contravariant
+  deps:
+  - purescript-either
+  - purescript-monoid
+  - purescript-tuples
+  repo: https://github.com/purescript/purescript-contravariant
+  commit: 50dbff3513a627ad4948d6afbc83eb7b39fa895f
+- name: purescript-control
+  deps:
+  - purescript-prelude
+  repo: https://github.com/purescript/purescript-control
+  commit: daae61df2a855c29d991901de448c3bca596ad70
+- name: purescript-datetime
+  deps:
+  - purescript-maps
+  - purescript-foldable-traversable
+  - purescript-generics
+  - purescript-integers
+  - purescript-math
+  - purescript-enums
+  - purescript-functions
+  repo: https://github.com/purescript/purescript-datetime
+  commit: 03745730a0860bb3ffb8e3886158bcc2c03a12d5
+- name: purescript-distributive
+  deps:
+  - purescript-identity
+  repo: https://github.com/purescript/purescript-distributive
+  commit: 51760fbb2fe93b69e98d7b6c4aa2d9b685478a07
+- name: purescript-eff
+  deps:
+  - purescript-prelude
+  repo: https://github.com/purescript/purescript-eff
+  commit: 44fad683ec8b9042c20eaccaf9ba6ad06e218d09
+- name: purescript-either
+  deps:
+  - purescript-foldable-traversable
+  - purescript-prelude
+  repo: https://github.com/purescript/purescript-either
+  commit: 5b2c7af8c879f00ac32ba1f887a995823fc8d28c
+- name: purescript-enums
+  deps:
+  - purescript-either
+  - purescript-unfoldable
+  - purescript-strings
+  repo: https://github.com/purescript/purescript-enums
+  commit: 2b848bf1c7a70fd437a439e33a5088b310f4b990
+- name: purescript-exceptions
+  deps:
+  - purescript-either
+  - purescript-maybe
+  - purescript-eff
+  repo: https://github.com/purescript/purescript-exceptions
+  commit: 740d3f9bca0d6635e3a8be43ea082962e937cd01
+- name: purescript-exists
+  deps:
+  - purescript-unsafe-coerce
+  repo: https://github.com/purescript/purescript-exists
+  commit: aa6dddd1041e1aeabfa2abce8d307a4fa108760c
+- name: purescript-foldable-traversable
+  deps:
+  - purescript-maybe
+  - purescript-bifunctors
+  repo: https://github.com/purescript/purescript-foldable-traversable
+  commit: a1d31b51d58eb706ecbc99dc4c76021e3f799d58
+- name: purescript-foreign
+  deps:
+  - purescript-either
+  - purescript-arrays
+  - purescript-foldable-traversable
+  - purescript-integers
+  - purescript-transformers
+  - purescript-strings
+  - purescript-lists
+  - purescript-functions
+  repo: https://github.com/purescript/purescript-foreign
+  commit: 1de4a2e1081bb26aa6805c2d7006384ba2228a60
+- name: purescript-free
+  deps:
+  - purescript-control
+  - purescript-exists
+  - purescript-unsafe-coerce
+  - purescript-transformers
+  - purescript-catenable-lists
+  repo: https://github.com/purescript/purescript-free
+  commit: 4963e00b893da2c999308b36e23ae9a5115c5273
+- name: purescript-functions
+  deps:
+  - purescript-prelude
+  repo: https://github.com/purescript/purescript-functions
+  commit: 39479c2ba71d96aec3ddfb4bc5a467c88e586d18
+- name: purescript-functors
+  deps:
+  - purescript-either
+  - purescript-unsafe-coerce
+  - purescript-const
+  repo: https://github.com/purescript/purescript-functors
+  commit: e5a351853fe92b2c9e6956d9a49be94108bd4da1
+- name: purescript-gen
+  deps:
+  - purescript-unfoldable
+  - purescript-foldable-traversable
+  - purescript-tailrec
+  - purescript-nonempty
+  - purescript-integers
+  - purescript-tuples
+  repo: https://github.com/purescript/purescript-gen
+  commit: b989912d877a38548d541c84784f63903d30ca90
+- name: purescript-generics
+  deps:
+  - purescript-proxy
+  - purescript-either
+  - purescript-arrays
+  - purescript-strings
+  - purescript-identity
+  - purescript-lists
+  repo: https://github.com/purescript/purescript-generics
+  commit: 36ffb234010f417233f3574bef03d00eccf86fde
+- name: purescript-globals
+  deps: []
+  repo: https://github.com/purescript/purescript-globals
+  commit: 52442c3fef055996cbe345ef43b463c5ef764fdf
+- name: purescript-identity
+  deps:
+  - purescript-foldable-traversable
+  repo: https://github.com/purescript/purescript-identity
+  commit: c7c486629a44554c86cba2d5454938d02ada5923
+- name: purescript-integers
+  deps:
+  - purescript-maybe
+  - purescript-globals
+  - purescript-math
+  - purescript-partial
+  repo: https://github.com/purescript/purescript-integers
+  commit: f9b5e3ea9de3a7c5adf75faffd087b992e64a049
+- name: purescript-invariant
+  deps:
+  - purescript-prelude
+  repo: https://github.com/purescript/purescript-invariant
+  commit: 61b5c749483e50e10bb75df83a9e36331630e895
+- name: purescript-lazy
+  deps:
+  - purescript-monoid
+  repo: https://github.com/purescript/purescript-lazy
+  commit: 0c14b63162437b26546532c81f108cb67c53850a
+- name: purescript-lists
+  deps:
+  - purescript-unfoldable
+  - purescript-lazy
+  - purescript-tailrec
+  - purescript-nonempty
+  - purescript-partial
+  repo: https://github.com/purescript/purescript-lists
+  commit: ab3189f804eebb616778d58f4ad8095d4b07b966
+- name: purescript-maps
+  deps:
+  - purescript-arrays
+  - purescript-gen
+  - purescript-st
+  - purescript-lists
+  - purescript-functions
+  repo: https://github.com/purescript/purescript-maps
+  commit: e4244946e27c2bb838828b282843ba4e2e3f1690
+- name: purescript-math
+  deps: []
+  repo: https://github.com/purescript/purescript-math
+  commit: 9ece563b897086a1440e31ca32898405c7c420cb
+- name: purescript-maybe
+  deps:
+  - purescript-monoid
+  - purescript-prelude
+  repo: https://github.com/purescript/purescript-maybe
+  commit: 435566d37188a574276b9b98737bfcb4d5b89a9f
+- name: purescript-monoid
+  deps:
+  - purescript-newtype
+  - purescript-control
+  - purescript-invariant
+  repo: https://github.com/purescript/purescript-monoid
+  commit: 4df49ecb28928d1c5e516f97a9f5a07841937ae0
+- name: purescript-newtype
+  deps:
+  - purescript-prelude
+  repo: https://github.com/purescript/purescript-newtype
+  commit: 5f0557944afe85e3e830be9a8df43522311326e8
+- name: purescript-nonempty
+  deps:
+  - purescript-foldable-traversable
+  - purescript-prelude
+  repo: https://github.com/purescript/purescript-nonempty
+  commit: 1d53fbd8dead6446ab9f0c93ad02985d41de91e0
+- name: purescript-parallel
+  deps:
+  - purescript-foldable-traversable
+  - purescript-functors
+  - purescript-refs
+  - purescript-transformers
+  repo: https://github.com/purescript/purescript-parallel
+  commit: 188eab3dd0bd1af8e9f9337adaf423ea26386b54
+- name: purescript-partial
+  deps: []
+  repo: https://github.com/purescript/purescript-partial
+  commit: 4ede691a8cfe3a2166095fafc377e6f45dc0d911
+- name: purescript-prelude
+  deps: []
+  repo: https://github.com/purescript/purescript-prelude
+  commit: da4e75239dad5c8b6ee8866eac05c2f7a01a9d3d
+- name: purescript-proxy
+  deps:
+  - purescript-prelude
+  repo: https://github.com/purescript/purescript-proxy
+  commit: 19ac7912844e582b1f0a5532fa87bd4dd1fbcf5e
+- name: purescript-refs
+  deps:
+  - purescript-eff
+  repo: https://github.com/purescript/purescript-refs
+  commit: b938bda8b07f89853a011136ec001ac993b041c8
+- name: purescript-st
+  deps:
+  - purescript-eff
+  repo: https://github.com/purescript/purescript-st
+  commit: ac3a9832f4e1ce87deb5f7ebeb6051bb398595f3
+- name: purescript-strings
+  deps:
+  - purescript-either
+  - purescript-arrays
+  - purescript-maybe
+  - purescript-unfoldable
+  - purescript-gen
+  - purescript-integers
+  - purescript-partial
+  repo: https://github.com/purescript/purescript-strings
+  commit: b69dff8f7341b355cf36f5ad3849ab1ab8176fb7
+- name: purescript-tailrec
+  deps:
+  - purescript-either
+  - purescript-st
+  - purescript-partial
+  - purescript-identity
+  repo: https://github.com/purescript/purescript-tailrec
+  commit: 0991c8657d2b997e6ebc279d7f291880aaffa6ca
+- name: purescript-transformers
+  deps:
+  - purescript-arrays
+  - purescript-distributive
+  - purescript-lazy
+  - purescript-tuples
+  repo: https://github.com/purescript/purescript-transformers
+  commit: be1de0511512f435e17f321284028ebe584d8571
+- name: purescript-tuples
+  deps:
+  - purescript-type-equality
+  - purescript-distributive
+  - purescript-foldable-traversable
+  - purescript-prelude
+  repo: https://github.com/purescript/purescript-tuples
+  commit: 4721788edd3ed789eeda672ceaf2b077e7270988
+- name: purescript-type-equality
+  deps:
+  - purescript-eff
+  repo: https://github.com/purescript/purescript-type-equality
+  commit: 9cccbc7985d69619fdde0c4b2c16687a0e0282b8
+- name: purescript-unfoldable
+  deps:
+  - purescript-tuples
+  - purescript-partial
+  repo: https://github.com/purescript/purescript-unfoldable
+  commit: 101ce1ce2b22beda229bbacfc0ef30279909287d
+- name: purescript-unsafe-coerce
+  deps: []
+  repo: https://github.com/purescript/purescript-unsafe-coerce
+  commit: 1e021bf22c72c8cf9f699eb6011b634af75996f9

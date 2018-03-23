@@ -1,0 +1,27 @@
+{
+  "name": "purescript-wechaty",
+  "version": "1.0.0",
+  "description": "A wechat assistant",
+  "main": "./index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "devDependencies": {},
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0",
+    "wechaty": "^0.13.86"
+  },
+  "author": {
+    "name": "Li Meng Jun",
+    "email": "lmjubuntu@gmail.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Lupino/purescript-wechaty/issues"
+  },
+  "homepage": "https://github.com/Lupino/purescript-wechaty/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lupino/purescript-wechaty.git"
+  }
+}
