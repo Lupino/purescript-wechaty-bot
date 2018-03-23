@@ -1,0 +1,25 @@
+{
+  "name": "purescript-wechaty",
+  "description": "A wechat assistant",
+  "main": "./index.js",
+  "authors": [
+    {
+      "name": "Li Meng Jun",
+      "email": "lmjubuntu@gmail.com"
+    }
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/Lupino/purescript-wechaty",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "purescript-aff-promise": "^1.0.0",
+    "purescript-aff": "^4.0.2"
+  }
+}
