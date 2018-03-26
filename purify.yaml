@@ -144,6 +144,20 @@ extra-deps:
   - purescript-functions
   repo: https://github.com/purescript/purescript-foreign
   commit: 1de4a2e1081bb26aa6805c2d7006384ba2228a60
+- name: purescript-foreign-generic
+  deps:
+  - purescript-proxy
+  - purescript-exceptions
+  - purescript-maps
+  - purescript-console
+  - purescript-symbols
+  - purescript-eff
+  - purescript-globals
+  - purescript-generics-rep
+  - purescript-foreign
+  - purescript-nullable
+  repo: https://github.com/paf31/purescript-foreign-generic
+  commit: e35698c87f38686d9ee027dfa2290259d28d660a
 - name: purescript-free
   deps:
   - purescript-control
@@ -185,6 +199,14 @@ extra-deps:
   - purescript-lists
   repo: https://github.com/purescript/purescript-generics
   commit: 36ffb234010f417233f3574bef03d00eccf86fde
+- name: purescript-generics-rep
+  deps:
+  - purescript-symbols
+  - purescript-monoid
+  - purescript-foldable-traversable
+  - purescript-prelude
+  repo: https://github.com/purescript/purescript-generics-rep
+  commit: f7ec49d88f473c75edc77225fe441bc1fe0ca808
 - name: purescript-globals
   deps: []
   repo: https://github.com/purescript/purescript-globals
@@ -258,6 +280,12 @@ extra-deps:
   - purescript-prelude
   repo: https://github.com/purescript/purescript-nonempty
   commit: 1d53fbd8dead6446ab9f0c93ad02985d41de91e0
+- name: purescript-nullable
+  deps:
+  - purescript-maybe
+  - purescript-functions
+  repo: https://github.com/paf31/purescript-nullable
+  commit: 012aca713e0d89a5c188e474fd03e058798e5900
 - name: purescript-parallel
   deps:
   - purescript-foldable-traversable
@@ -300,6 +328,12 @@ extra-deps:
   - purescript-partial
   repo: https://github.com/purescript/purescript-strings
   commit: b69dff8f7341b355cf36f5ad3849ab1ab8176fb7
+- name: purescript-symbols
+  deps:
+  - purescript-prelude
+  - purescript-unsafe-coerce
+  repo: https://github.com/purescript/purescript-symbols
+  commit: 55cdcc85569c80938a33e97ee8d3350be7a48e75
 - name: purescript-tailrec
   deps:
   - purescript-either
