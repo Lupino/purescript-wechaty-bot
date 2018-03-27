@@ -40,11 +40,11 @@ foreign import data DB :: Effect
 data User = User
   { userid :: String
   , name :: String
-  , created_at :: Int
+  , created_at :: Number
   }
 
 user :: String -> String -> User
-user uid n = User {userid: uid, name: n, created_at: 0}
+user uid n = User {userid: uid, name: n, created_at: 0.0}
 
 instance userShow :: Show User where
   show (User u) = "User<<" <> u.userid <> ">><<" <> u.name <> ">>"
@@ -61,8 +61,8 @@ data Message = Message
   , group :: String
   , seq :: String
   , content :: String
-  , sched_at :: Int
-  , created_at :: Int
+  , sched_at :: Number
+  , created_at :: Number
   }
 
 instance messageShow :: Show Message where
@@ -91,8 +91,8 @@ message group seq = Message
   , group: group
   , seq: seq
   , content: ""
-  , sched_at: 0
-  , created_at: 0
+  , sched_at: 0.0
+  , created_at: 0.0
   }
 
 setContent :: String -> Message -> Message
@@ -101,7 +101,7 @@ setContent content (Message m) = Message (m {content = content})
 setUserId :: String -> Message -> Message
 setUserId userid (Message m) = Message (m {userid = userid})
 
-setSchedAt :: Int -> Message -> Message
+setSchedAt :: Number -> Message -> Message
 setSchedAt schedat (Message m) = Message (m {sched_at = schedat})
 
 exceptToMaybe :: forall a. F a -> Maybe a
