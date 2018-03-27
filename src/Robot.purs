@@ -17,6 +17,7 @@ import Data.Maybe (Maybe (..), fromMaybe, fromJust)
 import Wechaty.Types (ContactM)
 import Wechaty.Contact (say, contactId, contactName)
 import Control.Monad.Trans.Class (lift)
+import Periodic.Client (Client, PERIODIC, submitJob, removeJob)
 
 foreign import startsWith :: String -> String -> Boolean
 foreign import convertSchedAt :: forall a. a -> Number
@@ -104,29 +105,43 @@ subscriberHandler xs = do
   lift $ saveUser $ user uid name
   handleSubscriberAction (parseMessage xs)
 
-managerHandler :: forall eff. String -> ContactM (db :: DB | eff) Unit
-managerHandler xs = do
+managerHandler :: forall eff. Client -> String -> ContactM (db :: DB, periodic :: PERIODIC | eff) Unit
+managerHandler client xs = do
   uid <- contactId
   name <- contactName
   lift $ saveUser $ user uid name
-  handleManagerAction (parseMessage xs)
+  handleManagerAction client (parseMessage xs)
 
-handleManagerAction :: forall eff. Action -> ContactM (db :: DB | eff) Unit
-handleManagerAction (Msg (Message m)) = do
+handleManagerAction :: forall eff. Client -> Action -> ContactM (db :: DB, periodic :: PERIODIC | eff) Unit
+handleManagerAction client (Msg (Message m)) = do
   m0 <- lift $ getMessage m.group m.seq
   uid <- contactId
   case m0 of
     Nothing -> do
-       lift $ createMessage (setUserId uid $ Message m)
-       say $ "场景" <> m.group <> "脚本" <> m.seq <> " 增加成功"
+      lift $ createMessage (setUserId uid $ Message m)
+      lift $ submitJob client
+        { func: "send-message"
+        , name: m.group <> "-" <> m.seq
+        , sched_at: m.sched_at
+        }
+      say $ "场景" <> m.group <> "脚本" <> m.seq <> " 增加成功"
     Just _ -> if null m.content then do
                 lift $ deleteMessage m.group m.seq
+                lift $ removeJob client
+                  { func: "send-message"
+                  , name: m.group <> "-" <> m.seq
+                  }
                 say $ "场景" <> m.group <> "脚本" <> m.seq <> " 删除成功"
                 else do
                   lift $ updateMessage (Message m)
+                  lift $ submitJob client
+                    { func: "send-message"
+                    , name: m.group <> "-" <> m.seq
+                    , sched_at: m.sched_at
+                    }
                   say $ "场景" <> m.group <> "脚本" <> m.seq <> " 修改成功"
 
-handleManagerAction Help = do
+handleManagerAction _ Help = do
   say $ joinWith "\n"
     [ "场景脚本操作"
     , "输入：1-1 3-19 20:01 详细内容xxxxxx"
@@ -138,7 +153,7 @@ handleManagerAction Help = do
     ]
   saySubscriberHelp
 
-handleManagerAction act = handleSubscriberAction act
+handleManagerAction _ act = handleSubscriberAction act
 
 handleSubscriberAction :: forall eff. Action -> ContactM (db :: DB | eff) Unit
 handleSubscriberAction (Group group) = do

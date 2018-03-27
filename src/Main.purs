@@ -12,10 +12,13 @@ import Wechaty.Message (self, handleContact, handleContact_)
 import DB (DB)
 
 import Robot (subscriberHandler, managerHandler)
+import Config (get)
+import Periodic.Client (PERIODIC, newClient)
 
-main :: Eff (console :: CONSOLE, wechaty :: WECHATY, db :: DB) Unit
+main :: Eff (console :: CONSOLE, wechaty :: WECHATY, db :: DB, periodic :: PERIODIC) Unit
 main = do
   bot <- initWechaty
+  client <- newClient (get "periodic") {max: 10}
   launchAff_ $
     runWechatyM bot $ do
       onLogin $ do
@@ -23,6 +26,6 @@ main = do
         say "欢迎小主人归来"
       onMessage $ do
         s <- self
-        if s then handleContact_ managerHandler
+        if s then handleContact_ $ managerHandler client
              else handleContact subscriberHandler
       start
