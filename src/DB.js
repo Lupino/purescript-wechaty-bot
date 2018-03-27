@@ -101,6 +101,18 @@ exports._createMessage = function(msg) {
   }
 }
 
+exports._updateMessage = function(msg) {
+  return function() {
+    return Message.findOneAndUpdate({
+      group: msg.group,
+      seq: msg.seq
+    }, {
+      content: msg.content,
+      sched_at: msg.sched_at
+    }).exec().then(unit);
+  }
+}
+
 exports._getMessage = function(msg) {
   return function(just) {
     return function(nothing) {

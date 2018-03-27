@@ -12,6 +12,7 @@ module DB
   , setSchedAt
 
   , createMessage
+  , updateMessage
   , getMessage
   , getMessageList
   , deleteMessage
@@ -118,6 +119,7 @@ toAff' p = decodeMaybe <$> toAff p
 foreign import _saveUser :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _getUser :: forall a eff. String -> (a -> Maybe a) -> Maybe a -> Eff (db :: DB | eff) (Promise (Maybe a))
 foreign import _createMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
+foreign import _updateMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _getMessage :: forall a b eff. a -> (b -> Maybe b) -> Maybe b -> Eff (db :: DB | eff) (Promise (Maybe b))
 foreign import _getMessageList :: forall a eff. String -> Eff (db :: DB | eff) (Promise a)
 foreign import _deleteMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
@@ -133,6 +135,9 @@ getUser userid = liftEff (_getUser userid Just Nothing) >>= toAff'
 
 createMessage :: forall eff. Message -> Aff (db :: DB | eff) Unit
 createMessage (Message m) = liftEff (_createMessage m) >>= toAff
+
+updateMessage :: forall eff. Message -> Aff (db :: DB | eff) Unit
+updateMessage (Message m) = liftEff (_updateMessage m) >>= toAff
 
 getMessage :: forall eff. String -> String -> Aff (db :: DB | eff) (Maybe Message)
 getMessage group seq = liftEff (_getMessage {group: group, seq: seq} Just Nothing) >>= toAff'
