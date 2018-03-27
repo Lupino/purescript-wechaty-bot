@@ -2,8 +2,19 @@ var wechaty = require('wechaty');
 var Contact = wechaty.Contact;
 
 exports._find = function(name) {
-  return function() {
-    return Contact.find({name: name});
+  return function(just) {
+    return function(nothing) {
+      return function() {
+        return Contact.find({name: name})
+          .then(function(c) {
+          if (c) {
+            return just(c);
+          } else {
+            return nothing;
+          }
+        });
+      }
+    }
   }
 }
 

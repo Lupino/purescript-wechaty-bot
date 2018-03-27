@@ -14,6 +14,7 @@ import DB (DB)
 import Robot (subscriberHandler, managerHandler)
 import Config (get)
 import Periodic.Client (PERIODIC, newClient)
+import Worker (launchWorker)
 
 main :: Eff (console :: CONSOLE, wechaty :: WECHATY, db :: DB, periodic :: PERIODIC) Unit
 main = do
@@ -29,3 +30,5 @@ main = do
         if s then handleContact_ $ managerHandler client
              else handleContact subscriberHandler
       start
+
+  launchWorker

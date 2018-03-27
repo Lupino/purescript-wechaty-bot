@@ -16,11 +16,15 @@ import Control.Monad.Eff.Class (liftEff)
 import Data.Function.Uncurried (Fn2, runFn2)
 import Control.Monad.Reader (ask)
 import Control.Monad.Trans.Class (lift)
+import Data.Maybe (Maybe (..))
 
-foreign import _find :: forall eff. String -> Eff eff (Promise Contact)
+foreign import _find :: forall eff. String
+                     -> (Contact -> Maybe Contact)
+                     -> Maybe Contact
+                     -> Eff eff (Promise (Maybe Contact))
 
-find :: forall eff. String -> Aff eff Contact
-find n = liftEff (_find n) >>= toAff
+find :: forall eff. String -> Aff eff (Maybe Contact)
+find n = liftEff (_find n Just Nothing) >>= toAff
 
 foreign import _say :: forall a eff. Fn2 Contact a (Eff eff (Promise Unit))
 

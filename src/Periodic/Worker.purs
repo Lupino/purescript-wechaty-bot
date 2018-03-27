@@ -3,6 +3,7 @@ module Periodic.Worker
   , WorkerM
   , runWorker
   , addFunc
+  , work
 
   , Job
   , JobM
@@ -24,7 +25,7 @@ import Control.Monad.Trans.Class (lift)
 foreign import data Job :: Type
 foreign import data Worker :: Type
 foreign import newWorker :: forall a eff. a -> Eff eff Worker
-foreign import _work :: forall eff. Worker -> Int -> Eff eff Worker
+foreign import _work :: forall eff. Worker -> Int -> Eff eff Unit
 foreign import _addFunc :: forall eff. Worker -> String -> (Job -> Eff eff Unit) -> Eff eff Unit
 
 foreign import _done :: forall eff. Job -> Eff eff Unit
@@ -50,6 +51,11 @@ addFunc :: forall eff. String -> JobM eff Unit -> WorkerM eff Unit
 addFunc func m = do
   w <- ask
   lift $ _addFunc w func $ flip runJobM m
+
+work :: forall eff. Int -> WorkerM eff Unit
+work size = do
+  w <- ask
+  lift $ _work w size
 
 done :: forall eff. JobM eff Unit
 done = lift <<< _done =<< ask

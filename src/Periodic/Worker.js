@@ -18,7 +18,9 @@ exports._addFunc = function(worker) {
   return function(func) {
     return function(task) {
       return function() {
-        return worker.addFunc(func, task);
+        return worker.addFunc(func, function(job) {
+          task(job)();
+        });
       }
     }
   }
