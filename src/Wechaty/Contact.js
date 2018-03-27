@@ -1,4 +1,5 @@
 var wechaty = require('wechaty');
+var Wechaty = wechaty.Wechaty;
 var Contact = wechaty.Contact;
 
 exports._find = function(name) {
@@ -10,6 +11,11 @@ exports._find = function(name) {
           if (c) {
             return just(c);
           } else {
+            var bot = Wechaty.instance();
+            var user = bot.self();
+            if (user.name() === name) {
+              return just(user);
+            }
             return nothing;
           }
         });
