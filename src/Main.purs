@@ -8,7 +8,7 @@ import Wechaty.Types (WECHATY, runWechatyM)
 import Wechaty.Contact (say)
 import Control.Monad.Aff (launchAff_)
 import Control.Monad.Eff.Class (liftEff)
-import Wechaty.Message (content, self, handleContact, handleContact_)
+import Wechaty.Message (self, handleContact, handleContact_)
 import DB (DB)
 
 import Robot (subscriberHandler, managerHandler)
@@ -22,8 +22,6 @@ main = do
         liftEff $ log "Logined"
         say "欢迎小主人归来"
       onMessage $ do
-        msg <- content
-        liftEff $ log msg
         s <- self
         if s then handleContact_ managerHandler
              else handleContact subscriberHandler

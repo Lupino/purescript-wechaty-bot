@@ -8,6 +8,7 @@
   },
   "devDependencies": {},
   "dependencies": {
+    "moment": "^2.21.0",
     "mongoose": "^5.0.11",
     "mongoose-auto-increment": "^5.0.1",
     "node-periodic": "^1.0.7",

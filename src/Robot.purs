@@ -9,7 +9,7 @@ import Data.String.Regex (test, regex, Regex, match)
 import Data.String.Regex.Flags (noFlags)
 import Partial.Unsafe (unsafePartial)
 import Data.Either (fromRight)
-import Data.Array ((!!), head)
+import Data.Array ((!!))
 import DB (DB, Message (..), message, setContent, setSchedAt, saveUser, user,
            getMessageList, getMessage, deleteMessage, createMessage, setUserId,
            updateMessage, subscribeMessage, unSubscribeMessage)
@@ -18,9 +18,9 @@ import Wechaty.Types (ContactM)
 import Wechaty.Contact (say, contactId, contactName)
 import Control.Monad.Trans.Class (lift)
 
-foreign import startsWith :: forall eff. String -> String -> Boolean
-foreign import convertSchedAt :: forall a eff. a -> Number
-foreign import momentFormat :: forall eff. Number -> String -> String
+foreign import startsWith :: String -> String -> Boolean
+foreign import convertSchedAt :: forall a. a -> Number
+foreign import momentFormat :: Number -> String -> String
 
 reCreateMsg :: Regex
 reCreateMsg = unsafePartial

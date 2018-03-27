@@ -2,15 +2,21 @@ var wechaty = require('wechaty');
 var Room = wechaty.Room;
 
 exports._find = function(topic) {
-  return Room.find({topic: topic});
+  return function() {
+    return Room.find({topic: topic});
+  }
 }
 
 exports._say = function(room, obj) {
-  return room.say(obj);
+  return function() {
+    return room.say(obj);
+  }
 }
 
 exports._sayTo = function(room, replyTo, obj) {
-  return msg.say(room, replyTo);
+  return function() {
+    return msg.say(room, replyTo);
+  }
 }
 
 exports.getRoomId = function(room) {

@@ -1,9 +1,13 @@
 exports._say = function(msg, obj) {
-  return msg.say(obj);
+  return function() {
+    return msg.say(obj);
+  }
 }
 
 exports._sayTo = function(msg, replyTo, obj) {
-  return msg.say(obj, replyTo);
+  return function() {
+    return msg.say(obj, replyTo);
+  }
 }
 
 exports._getContent = function(msg) {
