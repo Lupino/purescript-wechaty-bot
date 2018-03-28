@@ -4,21 +4,24 @@ var config = wechaty.config;
 var QrcodeTerminal = require('qrcode-terminal');
 
 exports.initWechaty = function() {
-  var bot = Wechaty.instance({profile: config.default.DEFAULT_PROFILE});
-  bot.on('scan', function (url, code) {
-    if (!/201|200/.test(String(code))) {
-      var loginUrl = url.replace(/\/qrcode\//, '/l/')
-      QrcodeTerminal.generate(loginUrl);
+  return Wechaty.instance({profile: config.default.DEFAULT_PROFILE});
+}
+
+exports._onScan = function(bot) {
+  return function(callback) {
+    return function() {
+      bot.on('scan', function(url, code) {
+        callback(url)(code)();
+      });
     }
-    console.log(url + '\n[' + code + '] Scan QR Code above url to log in: ');
-  });
-  bot.on('error', function(e) {
-    console.error('Bot', 'error: %s', e)
-    if (bot.logonoff()) {
-      bot.say('Wechaty error: ' + e.message).catch(console.error)
-    }
-  });
-  return bot;
+  }
+}
+
+exports.showQrcode = function(url) {
+  return function() {
+    var loginUrl = url.replace(/\/qrcode\//, '/l/')
+    QrcodeTerminal.generate(loginUrl);
+  }
 }
 
 exports._onLogout = function(bot, callback) {
@@ -48,5 +51,18 @@ exports._onMessage = function(bot, callback) {
 exports._start = function(bot) {
   return function() {
     return bot.start();
+  }
+}
+
+exports._onError = function(bot) {
+  return function(callback) {
+    return function() {
+      bot.on('error', function(e) {
+        callback(e.message)();
+        if (bot.logonoff()) {
+          bot.say('Wechaty error: ' + e.message).catch(console.error)
+        }
+      });
+    }
   }
 }

@@ -1,5 +1,8 @@
 module Wechaty
   ( initWechaty
+  , onScan
+  , showQrcode
+  , onError
   , onLogin
   , onLogout
   , onMessage
@@ -20,9 +23,24 @@ import Control.Monad.Eff.Exception (Error)
 
 foreign import initWechaty :: forall eff. Eff eff Wechaty
 
-
 doError :: forall eff a. Either Error a → Eff eff Unit
 doError _ = pure unit
+
+foreign import _onScan :: forall eff. Wechaty -> (String -> Int -> Eff eff Unit) -> (Eff eff Unit)
+
+onScan :: forall eff. (String -> Int -> Eff (wechaty :: WECHATY | eff) Unit) -> WechatyM eff Unit
+onScan f = do
+  bot <- ask
+  liftEff $ _onScan bot f
+
+foreign import showQrcode :: forall eff. String -> (Eff eff Unit)
+
+foreign import _onError :: forall eff. Wechaty -> (String -> Eff eff Unit) -> (Eff eff Unit)
+
+onError :: forall eff. (String -> Eff (wechaty :: WECHATY | eff) Unit) -> WechatyM eff Unit
+onError f = do
+  bot <- ask
+  liftEff $ _onError bot f
 
 foreign import _onLogout :: forall eff. Fn2 Wechaty (Contact -> Eff eff Unit) (Eff eff Unit)
 
