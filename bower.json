@@ -20,6 +20,7 @@
   ],
   "dependencies": {
     "purescript-aff-promise": "^1.0.0",
-    "purescript-aff": "^4.0.2"
+    "purescript-aff": "^4.0.2",
+    "purescript-foreign-generic": "^5.0.1"
   }
 }

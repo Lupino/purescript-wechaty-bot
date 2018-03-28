@@ -26,14 +26,13 @@ import Prelude
 import Data.Maybe (Maybe (..))
 import Data.Either (Either (..))
 import Control.Promise (Promise, toAff)
-import Control.Monad.Eff (Eff)
+import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Class (liftEff)
 import Data.Foreign.Class (class Decode, decode)
 import Data.Foreign.Index (readProp)
 import Data.Foreign (F, Foreign)
 import Control.Monad.Except (runExcept)
-import Control.Monad.Eff (kind Effect)
 
 foreign import data DB :: Effect
 
