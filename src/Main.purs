@@ -17,9 +17,9 @@ import Periodic.Client (PERIODIC, newClient)
 import Worker (launchWorker)
 
 handleScan :: forall eff. String -> Int -> Eff eff Unit
-handleScan url 200 = showQrcode url
-handleScan url 201 = showQrcode url
-handleScan _ _ = pure unit
+handleScan url 200 = pure unit
+handleScan url 201 = pure unit
+handleScan url _ = showQrcode url
 
 main :: Eff (console :: CONSOLE, wechaty :: WECHATY, db :: DB, periodic :: PERIODIC) Unit
 main = do
