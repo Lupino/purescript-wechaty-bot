@@ -169,7 +169,7 @@ handleSubscriberAction (Showp group seq) = do
     Just (Message m0) -> do
       say $ joinWith "\n"
         [ "场景" <> group <> "脚本" <> seq <> ":"
-        , "时间: " <> momentFormat m0.sched_at "YYYY-MM-DD hh:mm:ss"
+        , "时间: " <> momentFormat m0.sched_at "YYYY-MM-DD HH:mm:ss"
         , m0.content
         ]
 
