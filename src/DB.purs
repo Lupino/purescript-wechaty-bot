@@ -20,6 +20,10 @@ module DB
   , subscribeMessage
   , unSubscribeMessage
   , getSubscribeList
+
+  , roomSubscribeMessage
+  , unRoomSubscribeMessage
+  , getRoomSubscribeList
   ) where
 
 import Prelude
@@ -94,6 +98,25 @@ message group seq = Message
   , created_at: 0.0
   }
 
+data Room = Room
+  { roomid :: String
+  , topic :: String
+  , created_at :: Number
+  }
+
+room :: String -> String -> Room
+room uid n = Room {roomid: uid, topic: n, created_at: 0.0}
+
+instance roomShow :: Show Room where
+  show (Room u) = "Room<<" <> u.roomid <> ">><<" <> u.topic <> ">>"
+
+instance roomDecode :: Decode Room where
+  decode o = do
+     uid <- decode =<< readProp "roomid" o
+     n <- decode =<< readProp "topic" o
+     ct <- decode =<< readProp "created_at" o
+     pure $ Room {roomid: uid, topic: n, created_at: ct}
+
 setContent :: String -> Message -> Message
 setContent content (Message m) = Message (m {content = content})
 
@@ -117,6 +140,8 @@ toAff' p = decodeMaybe <$> toAff p
 
 foreign import _saveUser :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _getUser :: forall a eff. String -> (a -> Maybe a) -> Maybe a -> Eff (db :: DB | eff) (Promise (Maybe a))
+foreign import _saveRoom :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
+foreign import _getRoom :: forall a eff. String -> (a -> Maybe a) -> Maybe a -> Eff (db :: DB | eff) (Promise (Maybe a))
 foreign import _createMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _updateMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _getMessage :: forall a b eff. a -> (b -> Maybe b) -> Maybe b -> Eff (db :: DB | eff) (Promise (Maybe b))
@@ -125,12 +150,21 @@ foreign import _deleteMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promis
 foreign import _subscribeMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _unSubscribeMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _getSubscribeList :: forall eff. String -> Eff (db :: DB | eff) (Promise (Array String))
+foreign import _roomSubscribeMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
+foreign import _unRoomSubscribeMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
+foreign import _getRoomSubscribeList :: forall eff. String -> Eff (db :: DB | eff) (Promise (Array String))
 
 saveUser :: forall eff. User -> Aff (db :: DB | eff) Unit
 saveUser (User u) = liftEff (_saveUser u) >>= toAff
 
 getUser :: forall eff. String -> Aff (db :: DB | eff) (Maybe User)
 getUser userid = liftEff (_getUser userid Just Nothing) >>= toAff'
+
+saveRoom :: forall eff. Room -> Aff (db :: DB | eff) Unit
+saveRoom (Room u) = liftEff (_saveRoom u) >>= toAff
+
+getRoom :: forall eff. String -> Aff (db :: DB | eff) (Maybe Room)
+getRoom roomid = liftEff (_getRoom roomid Just Nothing) >>= toAff'
 
 createMessage :: forall eff. Message -> Aff (db :: DB | eff) Unit
 createMessage (Message m) = liftEff (_createMessage m) >>= toAff
@@ -162,3 +196,14 @@ unSubscribeMessage userid group =
 
 getSubscribeList :: forall eff. String -> Aff (db :: DB | eff) (Array String)
 getSubscribeList group = liftEff (_getSubscribeList group) >>= toAff
+
+roomSubscribeMessage :: forall eff. String -> String -> Aff (db :: DB | eff) Unit
+roomSubscribeMessage roomid group =
+  liftEff (_roomSubscribeMessage {group: group, roomid: roomid}) >>= toAff
+
+unRoomSubscribeMessage :: forall eff. String -> String -> Aff (db :: DB | eff) Unit
+unRoomSubscribeMessage roomid group =
+  liftEff (_unRoomSubscribeMessage {group: group, roomid: roomid}) >>= toAff
+
+getRoomSubscribeList :: forall eff. String -> Aff (db :: DB | eff) (Array String)
+getRoomSubscribeList group = liftEff (_getRoomSubscribeList group) >>= toAff

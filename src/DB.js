@@ -22,6 +22,14 @@ var UserSchema = new Schema({
 
 var User = mongoose.model('User', UserSchema);
 
+var RoomSchema = new Schema({
+  roomid:     {type: String, index: {unique: true}},
+  topic:      {type: String, index: true},
+  created_at: {type: Number, default: timestamp},
+});
+
+var Room = mongoose.model('Room', RoomSchema);
+
 var MessageSchema = new Schema({
   userid:     {type: String, index: true},
   group:      {type: String},
@@ -46,6 +54,16 @@ var SubscribeSchema = new Schema({
 SubscribeSchema.plugin(autoIncrPlugin, { model: 'Subscribe', field: 'id', startAt: 1 });
 
 var Subscribe = mongoose.model('Subscribe', SubscribeSchema);
+
+var RoomSubscribeSchema = new Schema({
+  roomid:     {type: String, index: true},
+  group:      {type: String, index: true},
+  created_at: {type: Number, default: timestamp},
+});
+
+RoomSubscribeSchema.plugin(autoIncrPlugin, { model: 'RoomSubscribe', field: 'id', startAt: 1 });
+
+var RoomSubscribe = mongoose.model('RoomSubscribe', RoomSubscribeSchema);
 
 function toJSON(u) {
   if (u.toJSON) {
@@ -178,6 +196,69 @@ exports._getSubscribeList = function(group) {
       .then(function(subList) {
         return subList.map(function(sub) {
           return sub.userid;
+        })
+      });
+  }
+}
+
+exports._saveRoom = function(u) {
+  return function() {
+    return Room.findOne({roomid: u.roomid})
+      .exec()
+      .then(function(u0) {
+        if (u0) {
+          return u0;
+        }
+        return new Room({roomid: u.roomid, topic: u.topic}).save();
+      })
+      .then(unit);
+  }
+}
+
+exports._getRoom = function(roomid) {
+  return function(just) {
+    return function(nothing) {
+      return function() {
+        return Room.findOne({roomid: roomid})
+          .exec()
+          .then(function (u) {
+            if (u) {
+              return just(toJSON(u));
+            }
+            return nothing;
+          });
+      }
+    }
+  }
+}
+
+exports._roomSubscribeMessage = function(m) {
+  return function() {
+    return RoomSubscribe.findOne(m)
+      .exec()
+      .then(function(m0) {
+        if (m0) {
+          return m0;
+        }
+        return new RoomSubscribe(m).save();
+      })
+      .then(unit);
+  }
+}
+
+exports._unRoomSubscribeMessage = function(m) {
+  return function() {
+    return RoomSubscribe.findOneAndRemove(m).exec().then(unit);
+  }
+}
+
+exports._getRoomSubscribeList = function(group) {
+  return function() {
+    return RoomSubscribe.find({group: group})
+      .exec()
+      .then(function(subList) {
+        return subList.map(function(sub) {
+          return sub.roomid;
         })
       });
   }
