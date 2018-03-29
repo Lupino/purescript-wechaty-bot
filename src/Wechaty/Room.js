@@ -2,8 +2,19 @@ var wechaty = require('wechaty');
 var Room = wechaty.Room;
 
 exports._find = function(topic) {
-  return function() {
-    return Room.find({topic: topic});
+  return function(just) {
+    return function(nothing) {
+      return function() {
+        return Room.find({topic: topic})
+          .then(function(r) {
+          if (r) {
+            return just(r);
+          } else {
+            return nothing;
+          }
+        });
+      }
+    }
   }
 }
 

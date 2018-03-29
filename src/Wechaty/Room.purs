@@ -9,6 +9,7 @@ module Wechaty.Room
     ) where
 
 import Prelude
+import Data.Maybe (Maybe (..))
 import Control.Promise (Promise, toAff)
 import Wechaty.Types (Room, RoomM, Contact)
 import Control.Monad.Eff (Eff)
@@ -18,10 +19,13 @@ import Data.Function.Uncurried (Fn2, Fn3, runFn2, runFn3)
 import Control.Monad.Reader (ask)
 import Control.Monad.Trans.Class (lift)
 
-foreign import _find :: forall eff. String -> Eff eff (Promise Room)
+foreign import _find :: forall eff. String
+                     -> (Room -> Maybe Room)
+                     -> Maybe Room
+                     -> Eff eff (Promise (Maybe Room))
 
-find :: forall eff. String -> Aff eff Room
-find n = liftEff (_find n) >>= toAff
+find :: forall eff. String -> Aff eff (Maybe Room)
+find n = liftEff (_find n Just Nothing) >>= toAff
 
 foreign import _say :: forall a eff. Fn2 Room a (Eff eff (Promise Unit))
 
