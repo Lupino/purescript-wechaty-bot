@@ -10,7 +10,7 @@ import Control.Monad.Eff.Console (log, CONSOLE)
 import DB (DB)
 import Data.Maybe (Maybe(..))
 import Periodic.Client (PERIODIC, newClient)
-import Robot (managerHandler, subscriberHandler)
+import Robot (managerHandler, subscriberHandler, roomSubscriberHandler)
 import Wechaty (initWechaty, onScan, showQrcode, onLogin, onMessage, start, onError)
 import Wechaty.Contact (say)
 import Wechaty.Message (handleContact, handleRoom, room, self)
@@ -41,7 +41,7 @@ main = do
         case r of
           Nothing -> if s then handleContact $ managerHandler client
                           else handleContact $ subscriberHandler
-          Just r0 -> handleRoom r0 $ \_ _ _ -> pure unit
+          Just r0 -> handleRoom r0 s $ roomSubscriberHandler
 
       start
       onError $ \msg -> log $ "error: " <> msg

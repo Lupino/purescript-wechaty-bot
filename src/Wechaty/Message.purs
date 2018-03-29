@@ -64,12 +64,11 @@ room = do
   msg <- ask
   liftEff $ runFn3 _room Just Nothing msg
 
-handleRoom :: forall eff. Room -> (Contact -> Boolean -> String -> RoomM eff Unit) -> MessageM eff Unit
-handleRoom r m = do
+handleRoom :: forall eff. Room -> Boolean -> (Contact -> Boolean -> String -> RoomM eff Unit) -> MessageM eff Unit
+handleRoom r manager m = do
   msg <- content
-  s <- self
   f <- from
-  lift $ runRoomM r (m f s msg)
+  lift $ runRoomM r (m f manager msg)
 
 handleContact :: forall eff. (String -> ContactM eff Unit) -> MessageM eff Unit
 handleContact m = do

@@ -5,6 +5,11 @@ module DB
   , saveUser
   , getUser
 
+  , Room (..)
+  , room
+  , saveRoom
+  , getRoom
+
   , Message (..)
   , message
   , setContent

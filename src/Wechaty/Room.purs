@@ -4,6 +4,8 @@ module Wechaty.Room
     , sayTo
     , getRoomId
     , getRoomTopic
+    , roomId
+    , roomTopic
     ) where
 
 import Prelude
