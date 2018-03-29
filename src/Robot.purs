@@ -7,10 +7,7 @@ module Robot
 import Prelude
 
 import Control.Monad.Trans.Class (lift)
-import DB (DB, Message(..), message, setContent, setSchedAt, saveUser, user,
-           getMessageList, getMessage, deleteMessage, createMessage, setUserId,
-           updateMessage, subscribeMessage, unSubscribeMessage,
-           roomSubscribeMessage, unRoomSubscribeMessage, saveRoom, room)
+import DB (DB, Message(..), message, setContent, setSchedAt, saveUser, user, getMessageList, getMessage, deleteMessage, createMessage, setUserId, updateMessage, subscribeMessage, unSubscribeMessage, roomSubscribeMessage, unRoomSubscribeMessage, saveRoom, room)
 import Data.Array ((!!), concat)
 import Data.Either (fromRight)
 import Data.Maybe (Maybe(..), fromMaybe, fromJust)
@@ -121,7 +118,14 @@ roomSubscriberHandler contact manager xs = do
   rid <- roomId
   topic <- roomTopic
   lift $ saveRoom $ room rid topic
-  handleRoomSubscriberAction contact manager (parseMessage xs)
+  go $ \m -> handleRoomSubscriberAction contact manager (parseMessage m)
+
+  where go :: forall e. (String -> RoomM (db :: DB | e) Unit) -> RoomM (db :: DB | e) Unit
+        go f | startsWith xs "@小云" = f $ trim $ drop 3 xs
+             | startsWith xs "@机器人" = f $ trim $ drop 4 xs
+             | startsWith xs "@robot" = f $ trim $ drop 6 xs
+             | startsWith xs "@xiaoyun" = f $ trim $ drop 8 xs
+             | otherwise = pure unit
 
 handleManagerAction :: forall eff. Client -> Action -> ContactM (db :: DB, periodic :: PERIODIC | eff) Unit
 handleManagerAction client (Msg (Message m)) = do
