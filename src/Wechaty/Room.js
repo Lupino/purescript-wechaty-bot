@@ -26,7 +26,7 @@ exports._say = function(room, obj) {
 
 exports._sayTo = function(room, replyTo, obj) {
   return function() {
-    return msg.say(room, replyTo);
+    return room.say(obj, replyTo);
   }
 }
 
