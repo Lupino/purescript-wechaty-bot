@@ -1,19 +1,20 @@
 module Main where
 
-import Control.Monad.Eff.Console (log, CONSOLE)
-import Control.Monad.Eff (Eff)
 import Prelude
-import Wechaty (initWechaty, onScan, showQrcode, onLogin, onMessage, start, onError)
-import Wechaty.Types (WECHATY, runWechatyM)
-import Wechaty.Contact (say)
-import Control.Monad.Aff (launchAff_)
-import Control.Monad.Eff.Class (liftEff)
-import Wechaty.Message (self, handleContact, handleContact_)
-import DB (DB)
 
-import Robot (subscriberHandler, managerHandler)
 import Config (get)
+import Control.Monad.Aff (launchAff_)
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Console (log, CONSOLE)
+import DB (DB)
+import Data.Maybe (Maybe(..))
 import Periodic.Client (PERIODIC, newClient)
+import Robot (managerHandler, subscriberHandler)
+import Wechaty (initWechaty, onScan, showQrcode, onLogin, onMessage, start, onError)
+import Wechaty.Contact (say)
+import Wechaty.Message (handleContact, handleRoom, room, self)
+import Wechaty.Types (WECHATY, runWechatyM)
 import Worker (launchWorker)
 
 handleScan :: forall eff. String -> Int -> Eff eff Unit
@@ -35,9 +36,13 @@ main = do
         liftEff $ log "Logined"
         say "欢迎小主人归来"
       onMessage $ do
+        r <- room
         s <- self
-        if s then handleContact_ $ managerHandler client
-             else handleContact subscriberHandler
+        case r of
+          Nothing -> if s then handleContact $ managerHandler client
+                          else handleContact $ subscriberHandler
+          Just r0 -> handleRoom r0 $ \_ _ _ -> pure unit
+
       start
       onError $ \msg -> log $ "error: " <> msg
 

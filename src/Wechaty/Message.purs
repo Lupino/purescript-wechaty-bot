@@ -6,21 +6,20 @@ module Wechaty.Message
   , self
   , room
   , handleContact
-  , handleContact_
   , handleRoom
   ) where
 
 import Prelude
-import Data.Maybe (Maybe (..), isJust, fromJust, isNothing)
-import Partial.Unsafe (unsafePartial)
-import Control.Promise (Promise, toAff)
-import Wechaty.Types (Contact, ContactM, Message, MessageM, Room, RoomM, runContactM, runRoomM)
-import Control.Monad.Eff (Eff)
+
 import Control.Monad.Aff (Aff)
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Data.Function.Uncurried (Fn2, Fn3, runFn2, runFn3)
 import Control.Monad.Reader (ask)
 import Control.Monad.Trans.Class (lift)
+import Control.Promise (Promise, toAff)
+import Data.Function.Uncurried (Fn2, Fn3, runFn2, runFn3)
+import Data.Maybe (Maybe(..))
+import Wechaty.Types (Contact, ContactM, Message, MessageM, Room, RoomM, runContactM, runRoomM)
 
 foreign import _say :: forall a eff. Fn2 Message a (Eff eff (Promise Unit))
 foreign import _sayTo :: forall a eff. Fn3 Message Contact a (Eff eff (Promise Unit))
@@ -65,21 +64,15 @@ room = do
   msg <- ask
   liftEff $ runFn3 _room Just Nothing msg
 
-handleRoom :: forall eff. (Contact -> String -> RoomM eff Unit) -> MessageM eff Unit
-handleRoom m = do
-  r <- room
-  when (isJust r) $ do
-    msg <- content
-    f <- from
-    lift $ runRoomM (unsafePartial $ fromJust r) (m f msg)
+handleRoom :: forall eff. Room -> (Contact -> Boolean -> String -> RoomM eff Unit) -> MessageM eff Unit
+handleRoom r m = do
+  msg <- content
+  s <- self
+  f <- from
+  lift $ runRoomM r (m f s msg)
 
 handleContact :: forall eff. (String -> ContactM eff Unit) -> MessageM eff Unit
 handleContact m = do
-  r <- room
-  when (isNothing r) $ handleContact_ m
-
-handleContact_ :: forall eff. (String -> ContactM eff Unit) -> MessageM eff Unit
-handleContact_ m = do
   msg <- content
   f <- from
   lift $ runContactM f (m msg)
