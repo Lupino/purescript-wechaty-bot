@@ -13,7 +13,7 @@ import Control.Monad.Error.Class (try)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.Monad.Trans.Class (lift)
 import DB (Message(..), getMessage, DB, getSubscribeList, getRoomSubscribeList,
-           getUser, User(..), getRoom, Room (..), getGroup, Group (..))
+           getGroup, Group (..))
 import Data.Array ((!!), head, tail, null)
 import Data.Either (Either)
 import Data.Maybe (fromMaybe, fromJust, Maybe (..))
@@ -67,15 +67,13 @@ trySend :: forall eff. (String -> TaskM eff Unit) -> String -> TaskM eff Unit
 trySend f = lift <<< void <<< runMaybeT <<< try <<< f
 
 sendMessage :: forall eff. String -> Message -> String -> TaskM eff Unit
-sendMessage g (Message m) uid = do
-  (User u) <- MaybeT $ getUser uid
-  contact <- MaybeT $ find u.name
+sendMessage g (Message m) n = do
+  contact <- MaybeT $ find n
   lift $ runContactM contact $ do
     say $ g <> m.content
 
 sendRoomMessage :: forall eff. String -> Message -> String -> TaskM eff Unit
-sendRoomMessage g (Message m) rid = do
-  (Room u) <- MaybeT $ getRoom rid
-  room <- MaybeT $ R.find u.topic
+sendRoomMessage g (Message m) topic = do
+  room <- MaybeT $ R.find topic
   lift $ runRoomM room $ do
     R.say $ "\n" <> g <> m.content

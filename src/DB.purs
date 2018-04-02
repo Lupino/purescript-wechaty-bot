@@ -1,17 +1,8 @@
 module DB
   ( DB
-  , User (..)
-  , user
-  , saveUser
+  , class HasUser
   , getUser
-  , class HasUid
-  , getUid
-  , setUid
-
-  , Room (..)
-  , room
-  , saveRoom
-  , getRoom
+  , setUser
 
   , Group (..)
   , mkGroup
@@ -53,32 +44,13 @@ import Data.Maybe (Maybe(..))
 
 foreign import data DB :: Effect
 
-data User = User
-  { userid :: String
-  , name :: String
-  , created_at :: Number
-  }
-
-user :: String -> String -> User
-user uid n = User {userid: uid, name: n, created_at: 0.0}
-
-instance userShow :: Show User where
-  show (User u) = "User<<" <> u.userid <> ">><<" <> u.name <> ">>"
-
-instance userDecode :: Decode User where
-  decode o = do
-     uid <- decode =<< readProp "userid" o
-     n <- decode =<< readProp "name" o
-     ct <- decode =<< readProp "created_at" o
-     pure $ User {userid: uid, name: n, created_at: ct}
-
-class HasUid a where
-  setUid :: String -> a -> a
-  getUid :: a -> String
+class HasUser a where
+  setUser :: String -> a -> a
+  getUser :: a -> String
 
 
 data Group = Group
-  { userid :: String
+  { user :: String
   , group :: String
   , name :: String
   , created_at :: Number
@@ -89,26 +61,26 @@ instance groupShow :: Show Group where
 
 instance groupDecode :: Decode Group where
   decode o = do
-    uid <- decode =<< readProp "userid" o
+    uid <- decode =<< readProp "user" o
     g <- decode =<< readProp "group" o
     n <- decode =<< readProp "name" o
     ct <- decode =<< readProp "created_at" o
     pure $ Group
-      { userid: uid
+      { user: uid
       , group: g
       , name: n
       , created_at: ct
       }
 
-instance groupHasUid :: HasUid Group where
-  setUid uid (Group g) = Group (g {userid = uid})
-  getUid (Group g) = g.userid
+instance groupHasUser :: HasUser Group where
+  setUser uid (Group g) = Group (g {user = uid})
+  getUser (Group g) = g.user
 
 mkGroup :: String -> String -> Group
-mkGroup g n = Group { userid: "", group: g, name: n, created_at: 0.0 }
+mkGroup g n = Group { user: "", group: g, name: n, created_at: 0.0 }
 
 data Message = Message
-  { userid :: String
+  { user :: String
   , group :: String
   , seq :: String
   , content :: String
@@ -121,14 +93,14 @@ instance messageShow :: Show Message where
 
 instance messageDecode :: Decode Message where
   decode o = do
-    uid <- decode =<< readProp "userid" o
+    uid <- decode =<< readProp "user" o
     g <- decode =<< readProp "group" o
     s <- decode =<< readProp "seq" o
     c <- decode =<< readProp "content" o
     sc <- decode =<< readProp "sched_at" o
     ct <- decode =<< readProp "created_at" o
     pure $ Message
-      { userid: uid
+      { user: uid
       , group: g
       , seq: s
       , content: c
@@ -136,38 +108,19 @@ instance messageDecode :: Decode Message where
       , created_at: ct
       }
 
-instance messageHasUid :: HasUid Message where
-  setUid uid (Message m) = Message (m {userid = uid})
-  getUid (Message m) = m.userid
+instance messageHasUser :: HasUser Message where
+  setUser uid (Message m) = Message (m {user = uid})
+  getUser (Message m) = m.user
 
 message :: String -> String -> Message
 message group seq = Message
-  { userid: ""
+  { user: ""
   , group: group
   , seq: seq
   , content: ""
   , sched_at: 0.0
   , created_at: 0.0
   }
-
-data Room = Room
-  { roomid :: String
-  , topic :: String
-  , created_at :: Number
-  }
-
-room :: String -> String -> Room
-room uid n = Room {roomid: uid, topic: n, created_at: 0.0}
-
-instance roomShow :: Show Room where
-  show (Room u) = "Room<<" <> u.roomid <> ">><<" <> u.topic <> ">>"
-
-instance roomDecode :: Decode Room where
-  decode o = do
-     uid <- decode =<< readProp "roomid" o
-     n <- decode =<< readProp "topic" o
-     ct <- decode =<< readProp "created_at" o
-     pure $ Room {roomid: uid, topic: n, created_at: ct}
 
 setContent :: String -> Message -> Message
 setContent content (Message m) = Message (m {content = content})
@@ -187,12 +140,8 @@ decodeMaybe (Just v) = exceptToMaybe $ decode v
 toAff' :: forall a eff. Decode a => Promise (Maybe Foreign) -> Aff (db :: DB | eff) (Maybe a)
 toAff' p = decodeMaybe <$> toAff p
 
-foreign import _saveUser :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
-foreign import _getUser :: forall a eff. String -> (a -> Maybe a) -> Maybe a -> Eff (db :: DB | eff) (Promise (Maybe a))
 foreign import _saveGroup :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _getGroup :: forall a eff. String -> (a -> Maybe a) -> Maybe a -> Eff (db :: DB | eff) (Promise (Maybe a))
-foreign import _saveRoom :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
-foreign import _getRoom :: forall a eff. String -> (a -> Maybe a) -> Maybe a -> Eff (db :: DB | eff) (Promise (Maybe a))
 foreign import _createMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _updateMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _getMessage :: forall a b eff. a -> (b -> Maybe b) -> Maybe b -> Eff (db :: DB | eff) (Promise (Maybe b))
@@ -205,23 +154,11 @@ foreign import _roomSubscribeMessage :: forall a eff. a -> Eff (db :: DB | eff) 
 foreign import _unRoomSubscribeMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _getRoomSubscribeList :: forall eff. String -> Eff (db :: DB | eff) (Promise (Array String))
 
-saveUser :: forall eff. User -> Aff (db :: DB | eff) Unit
-saveUser (User u) = liftEff (_saveUser u) >>= toAff
-
-getUser :: forall eff. String -> Aff (db :: DB | eff) (Maybe User)
-getUser userid = liftEff (_getUser userid Just Nothing) >>= toAff'
-
 saveGroup :: forall eff. Group -> Aff (db :: DB | eff) Unit
 saveGroup (Group u) = liftEff (_saveGroup u) >>= toAff
 
 getGroup :: forall eff. String -> Aff (db :: DB | eff) (Maybe Group)
 getGroup group = liftEff (_getGroup group Just Nothing) >>= toAff'
-
-saveRoom :: forall eff. Room -> Aff (db :: DB | eff) Unit
-saveRoom (Room u) = liftEff (_saveRoom u) >>= toAff
-
-getRoom :: forall eff. String -> Aff (db :: DB | eff) (Maybe Room)
-getRoom roomid = liftEff (_getRoom roomid Just Nothing) >>= toAff'
 
 createMessage :: forall eff. Message -> Aff (db :: DB | eff) Unit
 createMessage (Message m) = liftEff (_createMessage m) >>= toAff
@@ -244,23 +181,23 @@ deleteMessage group seq =
   liftEff (_deleteMessage {group: group, seq: seq}) >>= toAff
 
 subscribeMessage :: forall eff. String -> String -> Aff (db :: DB | eff) Unit
-subscribeMessage userid group =
-  liftEff (_subscribeMessage {group: group, userid: userid}) >>= toAff
+subscribeMessage user group =
+  liftEff (_subscribeMessage {group: group, user: user}) >>= toAff
 
 unSubscribeMessage :: forall eff. String -> String -> Aff (db :: DB | eff) Unit
-unSubscribeMessage userid group =
-  liftEff (_unSubscribeMessage {group: group, userid: userid}) >>= toAff
+unSubscribeMessage user group =
+  liftEff (_unSubscribeMessage {group: group, user: user}) >>= toAff
 
 getSubscribeList :: forall eff. String -> Aff (db :: DB | eff) (Array String)
 getSubscribeList group = liftEff (_getSubscribeList group) >>= toAff
 
 roomSubscribeMessage :: forall eff. String -> String -> Aff (db :: DB | eff) Unit
-roomSubscribeMessage roomid group =
-  liftEff (_roomSubscribeMessage {group: group, roomid: roomid}) >>= toAff
+roomSubscribeMessage room group =
+  liftEff (_roomSubscribeMessage {group: group, room: room}) >>= toAff
 
 unRoomSubscribeMessage :: forall eff. String -> String -> Aff (db :: DB | eff) Unit
-unRoomSubscribeMessage roomid group =
-  liftEff (_unRoomSubscribeMessage {group: group, roomid: roomid}) >>= toAff
+unRoomSubscribeMessage room group =
+  liftEff (_unRoomSubscribeMessage {group: group, room: room}) >>= toAff
 
 getRoomSubscribeList :: forall eff. String -> Aff (db :: DB | eff) (Array String)
 getRoomSubscribeList group = liftEff (_getRoomSubscribeList group) >>= toAff

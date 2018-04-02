@@ -14,25 +14,9 @@ function timestamp() {
   return Math.floor(new Date() / 1000);
 }
 
-var UserSchema = new Schema({
-  userid:     {type: String, index: {unique: true}},
-  name:       {type: String, index: true},
-  created_at: {type: Number, default: timestamp},
-});
-
-var User = mongoose.model('User', UserSchema);
-
-var RoomSchema = new Schema({
-  roomid:     {type: String, index: {unique: true}},
-  topic:      {type: String, index: true},
-  created_at: {type: Number, default: timestamp},
-});
-
-var Room = mongoose.model('Room', RoomSchema);
-
 var GroupSchema = new Schema({
   group:      {type: String, index: {unique: true}},
-  userid:     {type: String, index: true},
+  user:       {type: String, index: true},
   name:       {type: String},
   created_at: {type: Number, default: timestamp},
 });
@@ -40,7 +24,7 @@ var GroupSchema = new Schema({
 var Group = mongoose.model('Group', GroupSchema);
 
 var MessageSchema = new Schema({
-  userid:     {type: String, index: true},
+  user:       {type: String, index: true},
   group:      {type: String},
   seq:        {type: String},
   content:    {type: String},
@@ -55,7 +39,7 @@ MessageSchema.plugin(autoIncrPlugin, { model: 'Message', field: 'id', startAt: 1
 var Message = mongoose.model('Message', MessageSchema);
 
 var SubscribeSchema = new Schema({
-  userid:     {type: String, index: true},
+  user:       {type: String, index: true},
   group:      {type: String, index: true},
   created_at: {type: Number, default: timestamp},
 });
@@ -65,7 +49,7 @@ SubscribeSchema.plugin(autoIncrPlugin, { model: 'Subscribe', field: 'id', startA
 var Subscribe = mongoose.model('Subscribe', SubscribeSchema);
 
 var RoomSubscribeSchema = new Schema({
-  roomid:     {type: String, index: true},
+  room:       {type: String, index: true},
   group:      {type: String, index: true},
   created_at: {type: Number, default: timestamp},
 });
@@ -85,37 +69,6 @@ function unit() {
   return {}
 }
 
-exports._saveUser = function(u) {
-  return function() {
-    return User.findOne({userid: u.userid})
-      .exec()
-      .then(function(u0) {
-        if (u0) {
-          return u0;
-        }
-        return new User({userid: u.userid, name: u.name}).save();
-      })
-      .then(unit);
-  }
-}
-
-exports._getUser = function(userid) {
-  return function(just) {
-    return function(nothing) {
-      return function() {
-        return User.findOne({userid: userid})
-          .exec()
-          .then(function (u) {
-            if (u) {
-              return just(toJSON(u));
-            }
-            return nothing;
-          });
-      }
-    }
-  }
-}
-
 exports._saveGroup = function(u) {
   return function() {
     return Group.findOne({group: u.group})
@@ -124,7 +77,7 @@ exports._saveGroup = function(u) {
         if (u0) {
           return u0;
         }
-        return new Group({group: u.group, name: u.name, userid: u.userid}).save();
+        return new Group({group: u.group, name: u.name, user: u.user}).save();
       })
       .then(unit);
   }
@@ -150,7 +103,7 @@ exports._getGroup = function(group) {
 exports._createMessage = function(msg) {
   return function() {
     return new Message({
-      userid: msg.userid,
+      user: msg.user,
       group: msg.group,
       seq: msg.seq,
       content: msg.content,
@@ -235,40 +188,9 @@ exports._getSubscribeList = function(group) {
       .exec()
       .then(function(subList) {
         return subList.map(function(sub) {
-          return sub.userid;
+          return sub.user;
         })
       });
-  }
-}
-
-exports._saveRoom = function(u) {
-  return function() {
-    return Room.findOne({roomid: u.roomid})
-      .exec()
-      .then(function(u0) {
-        if (u0) {
-          return u0;
-        }
-        return new Room({roomid: u.roomid, topic: u.topic}).save();
-      })
-      .then(unit);
-  }
-}
-
-exports._getRoom = function(roomid) {
-  return function(just) {
-    return function(nothing) {
-      return function() {
-        return Room.findOne({roomid: roomid})
-          .exec()
-          .then(function (u) {
-            if (u) {
-              return just(toJSON(u));
-            }
-            return nothing;
-          });
-      }
-    }
   }
 }
 
@@ -298,7 +220,7 @@ exports._getRoomSubscribeList = function(group) {
       .exec()
       .then(function(subList) {
         return subList.map(function(sub) {
-          return sub.roomid;
+          return sub.room;
         })
       });
   }

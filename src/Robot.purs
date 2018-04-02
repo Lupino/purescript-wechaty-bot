@@ -7,11 +7,10 @@ module Robot
 import Prelude
 
 import Control.Monad.Trans.Class (lift)
-import DB (DB, Message(..), message, setContent, setSchedAt, saveUser, user,
-           getMessageList, getMessage, deleteMessage, createMessage, setUid,
-           updateMessage, subscribeMessage, unSubscribeMessage,
-           roomSubscribeMessage, unRoomSubscribeMessage, saveRoom, room,
-           Group(..), mkGroup, saveGroup, getGroup)
+import DB (DB, Message(..), message, setContent, setSchedAt, getMessageList,
+           getMessage, deleteMessage, createMessage, setUser, updateMessage,
+           subscribeMessage, unSubscribeMessage, roomSubscribeMessage,
+           unRoomSubscribeMessage, Group(..), mkGroup, saveGroup, getGroup)
 import Data.Array ((!!), concat)
 import Data.Either (fromRight)
 import Data.Maybe (Maybe(..), fromJust, fromMaybe)
@@ -20,8 +19,8 @@ import Data.String.Regex (Regex, match, regex, test)
 import Data.String.Regex.Flags (noFlags)
 import Partial.Unsafe (unsafePartial)
 import Periodic.Client (Client, PERIODIC, submitJob, removeJob)
-import Wechaty.Contact (contactId, contactName, say)
-import Wechaty.Room (sayTo, roomId, roomTopic)
+import Wechaty.Contact (contactName, say)
+import Wechaty.Room (sayTo, roomTopic)
 import Wechaty.Types (Contact, ContactM, RoomM)
 
 foreign import startsWith :: String -> String -> Boolean
@@ -112,24 +111,13 @@ parseShowAction xs = unsafePartial $ fromMaybe NoAction go
            pure $ Showp group seq
 
 subscriberHandler :: forall eff. String -> ContactM (db :: DB | eff) Unit
-subscriberHandler xs = do
-  uid <- contactId
-  name <- contactName
-  lift $ saveUser $ user uid name
-  handleSubscriberAction (parseMessage xs)
+subscriberHandler xs = handleSubscriberAction (parseMessage xs)
 
 managerHandler :: forall eff. Client -> String -> ContactM (db :: DB, periodic :: PERIODIC | eff) Unit
-managerHandler client xs = do
-  uid <- contactId
-  name <- contactName
-  lift $ saveUser $ user uid name
-  handleManagerAction client (parseMessage xs)
+managerHandler client xs = handleManagerAction client (parseMessage xs)
 
 roomSubscriberHandler :: forall eff. Contact -> Boolean -> String -> RoomM (db :: DB | eff) Unit
-roomSubscriberHandler contact manager xs = do
-  rid <- roomId
-  topic <- roomTopic
-  lift $ saveRoom $ room rid topic
+roomSubscriberHandler contact manager xs =
   go $ \m -> handleRoomSubscriberAction contact manager (parseMessage m)
 
   where go :: forall e. (String -> RoomM (db :: DB | e) Unit) -> RoomM (db :: DB | e) Unit
@@ -142,10 +130,10 @@ roomSubscriberHandler contact manager xs = do
 handleManagerAction :: forall eff. Client -> Action -> ContactM (db :: DB, periodic :: PERIODIC | eff) Unit
 handleManagerAction client (Msg (Message m)) = do
   m0 <- lift $ getMessage m.group m.seq
-  uid <- contactId
+  uid <- contactName
   case m0 of
     Nothing -> do
-      lift $ createMessage (setUid uid $ Message m)
+      lift $ createMessage (setUser uid $ Message m)
       lift $ submitJob client
         { func: "send-message"
         , name: m.group <> "-" <> m.seq
@@ -169,8 +157,8 @@ handleManagerAction client (Msg (Message m)) = do
                   say $ "场景" <> m.group <> "脚本" <> m.seq <> " 修改成功"
 
 handleManagerAction _ (SaveGroup (Group g)) = do
-  uid <- contactId
-  lift $ saveGroup (Group g)
+  n <- contactName
+  lift $ saveGroup (setUser n $ Group g)
   say $ "场景" <> g.group <> " 修改成功"
 
 handleManagerAction _ Help = do
@@ -220,12 +208,12 @@ handleSubscriberAction (Showp group seq) = do
         ]
 
 handleSubscriberAction (Sub group) = do
-  uid <- contactId
+  uid <- contactName
   lift $ subscribeMessage uid group
   say $ "订阅场景" <> group <> "成功"
 
 handleSubscriberAction (UnSub group) = do
-  uid <- contactId
+  uid <- contactName
   lift $ unSubscribeMessage uid group
   say $ "取消订阅场景" <> group <> "成功"
 
@@ -274,11 +262,11 @@ handleRoomSubscriberAction contact _ (ShowGroup group) = do
   sayTo contact $ "\n" <> h <> "回复代码查看脚本:\n" <> joinWith "\n" mList
 
 handleRoomSubscriberAction contact true (Sub group) = do
-  rid <- roomId
+  rid <- roomTopic
   lift $ roomSubscribeMessage rid group
   sayTo contact $ "订阅场景" <> group <> "成功"
 handleRoomSubscriberAction contact true (UnSub group) = do
-  rid <- roomId
+  rid <- roomTopic
   lift $ unRoomSubscribeMessage rid group
   sayTo contact $ "取消订阅场景" <> group <> "成功"
 handleRoomSubscriberAction contact _ (Showp group seq) = do
