@@ -7,16 +7,20 @@ module Robot
 import Prelude
 
 import Control.Monad.Trans.Class (lift)
-import DB (DB, Message(..), message, setContent, setSchedAt, saveUser, user, getMessageList, getMessage, deleteMessage, createMessage, setUserId, updateMessage, subscribeMessage, unSubscribeMessage, roomSubscribeMessage, unRoomSubscribeMessage, saveRoom, room)
+import DB (DB, Message(..), message, setContent, setSchedAt, saveUser, user,
+           getMessageList, getMessage, deleteMessage, createMessage, setUid,
+           updateMessage, subscribeMessage, unSubscribeMessage,
+           roomSubscribeMessage, unRoomSubscribeMessage, saveRoom, room,
+           Group(..), mkGroup, saveGroup, getGroup)
 import Data.Array ((!!), concat)
 import Data.Either (fromRight)
-import Data.Maybe (Maybe(..), fromMaybe, fromJust)
-import Data.String (trim, drop, length, null, joinWith)
-import Data.String.Regex (test, regex, Regex, match)
+import Data.Maybe (Maybe(..), fromJust, fromMaybe)
+import Data.String (trim, drop, length, null, joinWith, dropWhile, takeWhile)
+import Data.String.Regex (Regex, match, regex, test)
 import Data.String.Regex.Flags (noFlags)
 import Partial.Unsafe (unsafePartial)
 import Periodic.Client (Client, PERIODIC, submitJob, removeJob)
-import Wechaty.Contact (say, contactId, contactName)
+import Wechaty.Contact (contactId, contactName, say)
 import Wechaty.Room (sayTo, roomId, roomTopic)
 import Wechaty.Types (Contact, ContactM, RoomM)
 
@@ -39,23 +43,25 @@ reNum = unsafePartial $ fromRight $ regex "^\\d+$" noFlags
 
 data Action =
     Msg Message
-  | Group String
+  | ShowGroup String
   | Sub String
   | UnSub String
   | Showp String String
+  | SaveGroup Group
   | Help
   | NoAction
 
 parseMessage :: String -> Action
 parseMessage xs
-  | startsWith xs "场景" = parseNumAction Group $ trim $ drop 2 xs
-  | startsWith xs "group" = parseNumAction Group $ trim $ drop 5 xs
+  | startsWith xs "场景" = parseNumAction ShowGroup $ trim $ drop 2 xs
+  | startsWith xs "group" = parseNumAction ShowGroup $ trim $ drop 5 xs
   | startsWith xs "subscribe" = parseNumAction Sub $ trim $ drop 9 xs
   | startsWith xs "订阅" = parseNumAction Sub $ trim $ drop 2 xs
   | startsWith xs "unsubscribe" = parseNumAction UnSub $ trim $ drop 11 xs
   | startsWith xs "取消订阅" = parseNumAction UnSub $ trim $ drop 4 xs
   | startsWith xs "帮助" = Help
   | startsWith xs "help" = Help
+  | startsWith xs "编辑场景" = parseSaveGroupAction $ trim $ drop 4 xs
   | test reCreateMsg xs = parseMsgAction xs
   | test reShowMsg xs = parseShowAction xs
   | otherwise = NoAction
@@ -64,6 +70,12 @@ parseNumAction ::  (String -> Action) -> String -> Action
 parseNumAction f xs
   | test reNum xs = f xs
   | otherwise = NoAction
+
+parseSaveGroupAction :: String -> Action
+parseSaveGroupAction xs = go (takeWhile (_ /= ' ') xs) (trim $ dropWhile (_ /= ' ') xs)
+  where go :: String -> String -> Action
+        go g n | test reNum g || not (null n) = SaveGroup $ mkGroup g n
+               | otherwise = NoAction
 
 parseMsgAction :: String -> Action
 parseMsgAction xs = unsafePartial $ fromMaybe NoAction go
@@ -133,7 +145,7 @@ handleManagerAction client (Msg (Message m)) = do
   uid <- contactId
   case m0 of
     Nothing -> do
-      lift $ createMessage (setUserId uid $ Message m)
+      lift $ createMessage (setUid uid $ Message m)
       lift $ submitJob client
         { func: "send-message"
         , name: m.group <> "-" <> m.seq
@@ -156,15 +168,25 @@ handleManagerAction client (Msg (Message m)) = do
                     }
                   say $ "场景" <> m.group <> "脚本" <> m.seq <> " 修改成功"
 
+handleManagerAction _ (SaveGroup (Group g)) = do
+  uid <- contactId
+  lift $ saveGroup (Group g)
+  say $ "场景" <> g.group <> " 修改成功"
+
 handleManagerAction _ Help = do
   say $ joinWith "\n" $ concat
     [ [ "场景脚本操作"
       , "输入：1-1 3-19 20:01 详细内容xxxxxx"
       , "输出：场景1脚本1 增加成功"
       , "（《1-1》是场景1的脚本1 ）"
+      , ""
       , "再次输入：1-1  3-19 20:01 详细内容xxxxxx"
       , "输出：场景1脚本1 修改成功"
       , "（详细内容为空，输出：场景1脚本1删除成功）"
+      , ""
+      , "编辑场景"
+      , "输入: 编辑场景 1 提醒"
+      , "输出: 场景1 修改成功"
       ]
     , showHelp
     , subscriberHelp
@@ -173,11 +195,18 @@ handleManagerAction _ Help = do
 handleManagerAction _ act = handleSubscriberAction act
 
 handleSubscriberAction :: forall eff. Action -> ContactM (db :: DB | eff) Unit
-handleSubscriberAction (Group group) = do
+handleSubscriberAction (ShowGroup group) = do
   mList <- lift
     $ map (\(Message m) -> m.group <> "-" <> m.seq)
     <$> getMessageList group
-  say $ "回复代码查看脚本:\n" <> joinWith "\n" mList
+
+  g <- lift $ getGroup group
+
+  let h = case g of
+            Nothing -> ""
+            Just (Group g') -> "场景: " <> g'.name <> "\n"
+
+  say $ h <> "回复代码查看脚本:\n" <> joinWith "\n" mList
 
 handleSubscriberAction (Showp group seq) = do
   m <- lift $ getMessage group seq
@@ -231,11 +260,19 @@ showHelp =
   ]
 
 handleRoomSubscriberAction :: forall eff. Contact -> Boolean -> Action -> RoomM (db :: DB | eff) Unit
-handleRoomSubscriberAction contact _ (Group group) = do
+handleRoomSubscriberAction contact _ (ShowGroup group) = do
   mList <- lift
     $ map (\(Message m) -> m.group <> "-" <> m.seq)
     <$> getMessageList group
-  sayTo contact $ "回复代码查看脚本:\n" <> joinWith "\n" mList
+
+  g <- lift $ getGroup group
+
+  let h = case g of
+            Nothing -> ""
+            Just (Group g') -> "场景: " <> g'.name <> "\n"
+
+  sayTo contact $ "\n" <> h <> "回复代码查看脚本:\n" <> joinWith "\n" mList
+
 handleRoomSubscriberAction contact true (Sub group) = do
   rid <- roomId
   lift $ roomSubscribeMessage rid group

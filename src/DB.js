@@ -30,6 +30,15 @@ var RoomSchema = new Schema({
 
 var Room = mongoose.model('Room', RoomSchema);
 
+var GroupSchema = new Schema({
+  group:      {type: String, index: {unique: true}},
+  userid:     {type: String, index: true},
+  name:       {type: String},
+  created_at: {type: Number, default: timestamp},
+});
+
+var Group = mongoose.model('Group', GroupSchema);
+
 var MessageSchema = new Schema({
   userid:     {type: String, index: true},
   group:      {type: String},
@@ -95,6 +104,37 @@ exports._getUser = function(userid) {
     return function(nothing) {
       return function() {
         return User.findOne({userid: userid})
+          .exec()
+          .then(function (u) {
+            if (u) {
+              return just(toJSON(u));
+            }
+            return nothing;
+          });
+      }
+    }
+  }
+}
+
+exports._saveGroup = function(u) {
+  return function() {
+    return Group.findOne({group: u.group})
+      .exec()
+      .then(function(u0) {
+        if (u0) {
+          return u0;
+        }
+        return new Group({group: u.group, name: u.name, userid: u.userid}).save();
+      })
+      .then(unit);
+  }
+}
+
+exports._getGroup = function(group) {
+  return function(just) {
+    return function(nothing) {
+      return function() {
+        return Group.findOne({group: group})
           .exec()
           .then(function (u) {
             if (u) {

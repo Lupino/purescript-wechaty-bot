@@ -4,16 +4,23 @@ module DB
   , user
   , saveUser
   , getUser
+  , class HasUid
+  , getUid
+  , setUid
 
   , Room (..)
   , room
   , saveRoom
   , getRoom
 
+  , Group (..)
+  , mkGroup
+  , saveGroup
+  , getGroup
+
   , Message (..)
   , message
   , setContent
-  , setUserId
   , setSchedAt
 
   , createMessage
@@ -32,16 +39,17 @@ module DB
   ) where
 
 import Prelude
-import Data.Maybe (Maybe (..))
-import Data.Either (Either (..))
-import Control.Promise (Promise, toAff)
-import Control.Monad.Eff (Eff, kind Effect)
+
 import Control.Monad.Aff (Aff)
+import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Except (runExcept)
+import Control.Promise (Promise, toAff)
+import Data.Either (Either(..))
+import Data.Foreign (F, Foreign)
 import Data.Foreign.Class (class Decode, decode)
 import Data.Foreign.Index (readProp)
-import Data.Foreign (F, Foreign)
-import Control.Monad.Except (runExcept)
+import Data.Maybe (Maybe(..))
 
 foreign import data DB :: Effect
 
@@ -63,6 +71,41 @@ instance userDecode :: Decode User where
      n <- decode =<< readProp "name" o
      ct <- decode =<< readProp "created_at" o
      pure $ User {userid: uid, name: n, created_at: ct}
+
+class HasUid a where
+  setUid :: String -> a -> a
+  getUid :: a -> String
+
+
+data Group = Group
+  { userid :: String
+  , group :: String
+  , name :: String
+  , created_at :: Number
+  }
+
+instance groupShow :: Show Group where
+  show (Group g) = "Group<<" <> g.group <> ">><<" <> g.name <> ">>"
+
+instance groupDecode :: Decode Group where
+  decode o = do
+    uid <- decode =<< readProp "userid" o
+    g <- decode =<< readProp "group" o
+    n <- decode =<< readProp "name" o
+    ct <- decode =<< readProp "created_at" o
+    pure $ Group
+      { userid: uid
+      , group: g
+      , name: n
+      , created_at: ct
+      }
+
+instance groupHasUid :: HasUid Group where
+  setUid uid (Group g) = Group (g {userid = uid})
+  getUid (Group g) = g.userid
+
+mkGroup :: String -> String -> Group
+mkGroup g n = Group { userid: "", group: g, name: n, created_at: 0.0 }
 
 data Message = Message
   { userid :: String
@@ -92,6 +135,10 @@ instance messageDecode :: Decode Message where
       , sched_at: sc
       , created_at: ct
       }
+
+instance messageHasUid :: HasUid Message where
+  setUid uid (Message m) = Message (m {userid = uid})
+  getUid (Message m) = m.userid
 
 message :: String -> String -> Message
 message group seq = Message
@@ -125,9 +172,6 @@ instance roomDecode :: Decode Room where
 setContent :: String -> Message -> Message
 setContent content (Message m) = Message (m {content = content})
 
-setUserId :: String -> Message -> Message
-setUserId userid (Message m) = Message (m {userid = userid})
-
 setSchedAt :: Number -> Message -> Message
 setSchedAt schedat (Message m) = Message (m {sched_at = schedat})
 
@@ -145,6 +189,8 @@ toAff' p = decodeMaybe <$> toAff p
 
 foreign import _saveUser :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _getUser :: forall a eff. String -> (a -> Maybe a) -> Maybe a -> Eff (db :: DB | eff) (Promise (Maybe a))
+foreign import _saveGroup :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
+foreign import _getGroup :: forall a eff. String -> (a -> Maybe a) -> Maybe a -> Eff (db :: DB | eff) (Promise (Maybe a))
 foreign import _saveRoom :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _getRoom :: forall a eff. String -> (a -> Maybe a) -> Maybe a -> Eff (db :: DB | eff) (Promise (Maybe a))
 foreign import _createMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
@@ -164,6 +210,12 @@ saveUser (User u) = liftEff (_saveUser u) >>= toAff
 
 getUser :: forall eff. String -> Aff (db :: DB | eff) (Maybe User)
 getUser userid = liftEff (_getUser userid Just Nothing) >>= toAff'
+
+saveGroup :: forall eff. Group -> Aff (db :: DB | eff) Unit
+saveGroup (Group u) = liftEff (_saveGroup u) >>= toAff
+
+getGroup :: forall eff. String -> Aff (db :: DB | eff) (Maybe Group)
+getGroup group = liftEff (_getGroup group Just Nothing) >>= toAff'
 
 saveRoom :: forall eff. Room -> Aff (db :: DB | eff) Unit
 saveRoom (Room u) = liftEff (_saveRoom u) >>= toAff

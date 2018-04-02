@@ -13,10 +13,10 @@ import Control.Monad.Error.Class (try)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.Monad.Trans.Class (lift)
 import DB (Message(..), getMessage, DB, getSubscribeList, getRoomSubscribeList,
-           getUser, User(..), getRoom, Room (..))
+           getUser, User(..), getRoom, Room (..), getGroup, Group (..))
 import Data.Array ((!!), head, tail, null)
 import Data.Either (Either)
-import Data.Maybe (fromMaybe, fromJust)
+import Data.Maybe (fromMaybe, fromJust, Maybe (..))
 import Data.String (Pattern(..), split)
 import Partial.Unsafe (unsafePartial)
 import Periodic.Worker (runWorker, addFunc, PERIODIC, work, name, done)
@@ -40,11 +40,18 @@ launchWorker = do
 
 runTask :: forall eff. String -> TaskM eff Unit
 runTask xs = do
+
+  g <- lift $ getGroup group
+  let h = case g of
+            Nothing -> ""
+            Just (Group g') -> "场景: " <> g'.name <> "\n"
+
   m <- MaybeT (getMessage group seq)
+
   uList <- lift $ getSubscribeList group
-  loop (trySend $ sendMessage m) uList
+  loop (trySend $ sendMessage h m) uList
   rList <- lift $ getRoomSubscribeList group
-  loop (trySend $ sendRoomMessage m) rList
+  loop (trySend $ sendRoomMessage h m) rList
   where ys = split (Pattern "-") xs
         group = unsafePartial $ fromMaybe "" $ ys !! 0
         seq = unsafePartial $ fromMaybe "" $ ys !! 1
@@ -59,16 +66,16 @@ loop f xs
 trySend :: forall eff. (String -> TaskM eff Unit) -> String -> TaskM eff Unit
 trySend f = lift <<< void <<< runMaybeT <<< try <<< f
 
-sendMessage :: forall eff. Message -> String -> TaskM eff Unit
-sendMessage (Message m) uid = do
+sendMessage :: forall eff. String -> Message -> String -> TaskM eff Unit
+sendMessage g (Message m) uid = do
   (User u) <- MaybeT $ getUser uid
   contact <- MaybeT $ find u.name
   lift $ runContactM contact $ do
-    say m.content
+    say $ g <> m.content
 
-sendRoomMessage :: forall eff. Message -> String -> TaskM eff Unit
-sendRoomMessage (Message m) rid = do
+sendRoomMessage :: forall eff. String -> Message -> String -> TaskM eff Unit
+sendRoomMessage g (Message m) rid = do
   (Room u) <- MaybeT $ getRoom rid
   room <- MaybeT $ R.find u.topic
   lift $ runRoomM room $ do
-    R.say m.content
+    R.say $ "\n" <> g <> m.content
