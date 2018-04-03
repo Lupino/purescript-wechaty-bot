@@ -5,10 +5,6 @@ module Wechaty.Types
   , ContactM
   , runContactM
 
-  , Message
-  , MessageM
-  , runMessageM
-
   , Room
   , RoomM
   , runRoomM
@@ -26,12 +22,6 @@ type ContactM eff = ReaderT Contact (Aff (wechaty :: WECHATY | eff))
 
 runContactM :: forall a eff. Contact -> ContactM eff a -> Aff (wechaty :: WECHATY | eff) a
 runContactM contact = flip runReaderT contact
-
-foreign import data Message :: Type
-type MessageM eff = ReaderT Message (Aff (wechaty :: WECHATY | eff))
-
-runMessageM :: forall a eff. Message -> MessageM eff a -> Aff (wechaty :: WECHATY | eff) a
-runMessageM msg = flip runReaderT msg
 
 foreign import data Room :: Type
 type RoomM eff = ReaderT Room (Aff (wechaty :: WECHATY | eff))

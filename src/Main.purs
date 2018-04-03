@@ -28,7 +28,7 @@ main = do
   bot <- initWechaty
   client <- newClient (get "periodic") {max: 10}
   launchAff_ $ do
-    runWechatyT bot $ do
+    runWechatyT launchAff_ bot $ do
       onScan $ \url code -> do
         handleScan url code
         log url

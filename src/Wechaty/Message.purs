@@ -7,19 +7,30 @@ module Wechaty.Message
   , room
   , handleContact
   , handleRoom
+  , Message
+  , MessageT
+  , runMessageT
   ) where
 
 import Prelude
 
 import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Reader (ask)
+import Control.Monad.Eff.Class (class MonadEff, liftEff)
+import Control.Monad.Reader (ask, ReaderT, runReaderT)
 import Control.Monad.Trans.Class (lift)
 import Control.Promise (Promise, toAff)
 import Data.Function.Uncurried (Fn2, Fn3, runFn2, runFn3)
 import Data.Maybe (Maybe(..))
-import Wechaty.Types (Contact, ContactM, Message, MessageM, Room, RoomM, runContactM, runRoomM)
+import Wechaty.Types (Contact, ContactM, Room, RoomM, WECHATY, runContactM, runRoomM)
+
+foreign import data Message :: Type
+type MessageT m = ReaderT Message m
+
+runMessageT :: forall a m. Message -> MessageT m a -> m a
+runMessageT msg = flip runReaderT msg
+
 
 foreign import _say :: forall a eff. Fn2 Message a (Eff eff (Promise Unit))
 foreign import _sayTo :: forall a eff. Fn3 Message Contact a (Eff eff (Promise Unit))
@@ -31,47 +42,65 @@ foreign import _room :: forall eff. Fn3 (Room -> Maybe Room) (Maybe Room) Messag
 runSay :: forall a eff. Message -> a -> Aff eff Unit
 runSay msg a = liftEff (runFn2 _say msg a) >>= toAff
 
-say :: forall a eff. a -> MessageM eff Unit
+say
+  :: forall a m eff. MonadAff (wechaty :: WECHATY | eff) m
+  => a -> MessageT m Unit
 say a = do
   msg <- ask
-  lift $ runSay msg a
+  liftAff $ runSay msg a
 
 runSayTo :: forall a eff. Message -> Contact -> a -> Aff eff Unit
 runSayTo msg contact a = liftEff (runFn3 _sayTo msg contact a) >>= toAff
 
-sayTo :: forall a eff. Contact -> a -> MessageM eff Unit
+sayTo
+  :: forall a m eff. MonadAff (wechaty :: WECHATY | eff) m
+  => Contact -> a -> MessageT m Unit
 sayTo contact a = do
   msg <- ask
-  lift $ runSayTo msg contact a
+  liftAff $ runSayTo msg contact a
 
-content :: forall eff. MessageM eff String
+content
+  :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
+  => MessageT m String
 content = do
   msg <- ask
   liftEff $ _getContent msg
 
-from :: forall eff. MessageM eff Contact
+from
+  :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
+  => MessageT m Contact
 from = do
   msg <- ask
   liftEff $ _getFrom msg
 
-self :: forall eff. MessageM eff Boolean
+self
+  :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
+  => MessageT m Boolean
 self = do
   msg <- ask
   liftEff $ _getSelf msg
 
-room :: forall eff. MessageM eff (Maybe Room)
+room
+  :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
+  => MessageT m (Maybe Room)
 room = do
   msg <- ask
   liftEff $ runFn3 _room Just Nothing msg
 
-handleRoom :: forall eff. Room -> Boolean -> (Contact -> Boolean -> String -> RoomM eff Unit) -> MessageM eff Unit
+handleRoom
+  :: forall m eff. MonadAff (wechaty :: WECHATY | eff) m
+  => Room -> Boolean
+  -> (Contact -> Boolean -> String -> RoomM eff Unit)
+  -> MessageT m Unit
 handleRoom r manager m = do
   msg <- content
   f <- from
-  lift $ runRoomM r (m f manager msg)
+  liftAff $ runRoomM r (m f manager msg)
 
-handleContact :: forall eff. (String -> ContactM eff Unit) -> MessageM eff Unit
+handleContact
+  :: forall m eff. MonadAff (wechaty :: WECHATY | eff) m
+  => (String -> ContactM eff Unit) -> MessageT m Unit
 handleContact m = do
   msg <- content
   f <- from
-  lift $ runContactM f (m msg)
+  liftAff $ runContactM f (m msg)

@@ -1,5 +1,6 @@
 module Wechaty
   ( Wechaty
+  , WechatyConfig
   , WechatyT
   , runWechatyT
   , initWechaty
@@ -15,25 +16,27 @@ module Wechaty
 
 import Prelude
 
-import Control.Monad.Aff (Aff, launchAff_)
+import Control.Monad.Aff (launchAff_)
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
-import Control.Monad.Eff.Exception (Error)
-import Control.Monad.Reader (ReaderT, runReaderT)
-import Control.Monad.Reader (ask)
-import Control.Monad.Trans.Class (lift)
+import Control.Monad.Reader (ask, ReaderT, runReaderT)
 import Control.Promise (Promise, toAff)
-import Data.Either (Either)
 import Data.Function.Uncurried (Fn2, runFn2)
-import Wechaty.Types (Contact, ContactM, Message, MessageM, WECHATY, runContactM, runMessageM)
+import Wechaty.Message (MessageT, Message, runMessageT)
+import Wechaty.Types (Contact, ContactM, WECHATY, runContactM)
 import Wechaty.Types (WECHATY) as Exports
 
 foreign import data Wechaty :: Type
-type WechatyT m = ReaderT Wechaty m
 
-runWechatyT :: forall a m. Wechaty -> WechatyT m a -> m a
-runWechatyT wechaty = flip runReaderT wechaty
+data WechatyConfig eff m = WechatyConfig (m Unit -> Eff (wechaty :: WECHATY | eff) Unit) Wechaty
+
+type WechatyT eff m = ReaderT (WechatyConfig eff m) m
+
+runWechatyT
+  :: forall a m eff. (m Unit -> Eff (wechaty :: WECHATY | eff) Unit)
+  -> Wechaty -> WechatyT eff m a -> m a
+runWechatyT runEff wechaty = flip runReaderT (WechatyConfig runEff wechaty)
 
 foreign import initWechaty :: forall eff. Eff eff Wechaty
 
@@ -41,9 +44,9 @@ foreign import _onScan :: forall eff. Wechaty -> (String -> Int -> Eff eff Unit)
 
 onScan
   :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
-  => (String -> Int -> Eff (wechaty :: WECHATY | eff) Unit) -> WechatyT m Unit
+  => (String -> Int -> Eff (wechaty :: WECHATY | eff) Unit) -> WechatyT eff m Unit
 onScan f = do
-  bot <- ask
+  (WechatyConfig _ bot) <- ask
   liftEff $ _onScan bot f
 
 foreign import showQrcode :: forall eff. String -> (Eff eff Unit)
@@ -52,18 +55,18 @@ foreign import _onError :: forall eff. Wechaty -> (String -> Eff eff Unit) -> (E
 
 onError
   :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
-  => (String -> Eff (wechaty :: WECHATY | eff) Unit) -> WechatyT m Unit
+  => (String -> Eff (wechaty :: WECHATY | eff) Unit) -> WechatyT eff m Unit
 onError f = do
-  bot <- ask
+  (WechatyConfig _ bot) <- ask
   liftEff $ _onError bot f
 
 foreign import _onLogout :: forall eff. Fn2 Wechaty (Contact -> Eff eff Unit) (Eff eff Unit)
 
 onLogout
   :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
-  => ContactM eff Unit -> WechatyT m Unit
+  => ContactM eff Unit -> WechatyT eff m Unit
 onLogout m = do
-  bot <- ask
+  (WechatyConfig _ bot) <- ask
   liftEff $ runFn2 _onLogout bot $ doContact m
 
 foreign import _onLogin :: forall eff. Fn2 Wechaty (Contact -> Eff eff Unit) (Eff eff Unit)
@@ -73,29 +76,32 @@ doContact m contact = launchAff_ $ runContactM contact m
 
 onLogin
   :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
-  => ContactM eff Unit -> WechatyT m Unit
+  => ContactM eff Unit -> WechatyT eff m Unit
 onLogin m = do
-  bot <- ask
+  (WechatyConfig _ bot) <- ask
   liftEff $ runFn2 _onLogin bot $ doContact m
 
 foreign import _onMessage :: forall eff. Fn2 Wechaty (Message -> Eff eff Unit) (Eff eff Unit)
 
-doMessage :: forall eff. MessageM eff Unit -> Message -> Eff (wechaty :: WECHATY | eff) Unit
-doMessage m msg = launchAff_ $ runMessageM msg m
+doMessage
+  :: forall m eff. (m Unit -> Eff (wechaty :: WECHATY | eff) Unit)
+   -> MessageT m Unit -> Message -> Eff (wechaty :: WECHATY | eff) Unit
+doMessage runEff m = runEff <<< flip runMessageT m
 
 onMessage
   :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
-  => MessageM eff Unit -> WechatyT m Unit
+  => MessageT m Unit -> WechatyT eff m Unit
 onMessage m = do
   bot <- ask
-  liftEff $ runFn2 _onMessage bot $ doMessage m
+  (WechatyConfig runEff bot) <- ask
+  liftEff $ runFn2 _onMessage bot $ doMessage runEff m
 
 foreign import _start :: forall eff. Wechaty -> Eff eff (Promise Unit)
 
 start
   :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
-  => MonadAff (wechaty :: WECHATY| eff) m
-  => WechatyT m Unit
+  => MonadAff (wechaty :: WECHATY | eff) m
+  => WechatyT eff m Unit
 start = do
-  bot <- ask
+  (WechatyConfig _ bot) <- ask
   liftAff $ liftEff (_start bot) >>= toAff
