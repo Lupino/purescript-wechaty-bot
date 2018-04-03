@@ -25,7 +25,8 @@ import Control.Promise (Promise, toAff)
 import Data.Function.Uncurried (Fn2, Fn3, runFn2, runFn3)
 import Data.Maybe (Maybe(..))
 import Wechaty.Contact (Contact, ContactT, runContactT)
-import Wechaty.Types (Room, RoomM, WECHATY, runRoomM)
+import Wechaty.Room (Room, RoomT, runRoomT)
+import Wechaty.Types (WECHATY)
 
 foreign import data Message :: Type
 type MessageT m = ReaderT Message m
@@ -92,12 +93,12 @@ room = do
 handleRoom
   :: forall m eff. MonadAff (wechaty :: WECHATY | eff) m
   => Room -> Boolean
-  -> (Contact -> Boolean -> String -> RoomM eff Unit)
+  -> (Contact -> Boolean -> String -> RoomT m Unit)
   -> MessageT m Unit
 handleRoom r manager m = do
   msg <- content
   f <- from
-  liftAff $ runRoomM r (m f manager msg)
+  lift $ runRoomT r (m f manager msg)
 
 handleContact
   :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m

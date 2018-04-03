@@ -23,7 +23,7 @@ import Partial.Unsafe (unsafePartial)
 import Periodic.Worker (PERIODIC, addFunc, done, name, runWorkerT, schedLater, work)
 import Wechaty.Contact (say, find, runContactT)
 import Wechaty.Room as R
-import Wechaty.Types (WECHATY, runRoomM)
+import Wechaty.Types (WECHATY)
 
 type TaskM eff = MaybeT (Aff (wechaty :: WECHATY, db :: DB, now :: NOW | eff))
 
@@ -85,5 +85,5 @@ sendMessage g (Message m) n = do
 sendRoomMessage :: forall eff. String -> Message -> String -> TaskM eff Unit
 sendRoomMessage g (Message m) topic = do
   room <- MaybeT $ R.find topic
-  lift $ runRoomM room $ do
+  lift $ R.runRoomT room $ do
     R.say $ g <> m.content

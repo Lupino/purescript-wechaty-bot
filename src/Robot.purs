@@ -7,7 +7,6 @@ module Robot
 import Prelude
 
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
-import Control.Monad.Trans.Class (lift)
 import DB (DB, Message(..), message, setContent, setSchedAt, getMessageList, getMessage, deleteMessage, createMessage, setUser, updateMessage, subscribeMessage, unSubscribeMessage, roomSubscribeMessage, unRoomSubscribeMessage, Group(..), mkGroup, saveGroup, getGroup, setGroupRepeat)
 import Data.Array ((!!), concat)
 import Data.Either (fromRight)
@@ -19,8 +18,8 @@ import Partial.Unsafe (unsafePartial)
 import Periodic.Client (Client, PERIODIC, submitJob, removeJob)
 import Utils (startsWith, momentFormat, convertSchedAt, parseTimeString, formatTimeString)
 import Wechaty.Contact (Contact, ContactT, contactName, say)
-import Wechaty.Room (sayTo, roomTopic)
-import Wechaty.Types (RoomM, WECHATY)
+import Wechaty.Room (sayTo, roomTopic, RoomT)
+import Wechaty.Types (WECHATY)
 
 reCreateMsg :: Regex
 reCreateMsg = unsafePartial
@@ -123,11 +122,13 @@ managerHandler
   => Client -> String -> ContactT m Unit
 managerHandler client xs = handleManagerAction client (parseMessage xs)
 
-roomSubscriberHandler :: forall eff. Contact -> Boolean -> String -> RoomM (db :: DB | eff) Unit
+roomSubscriberHandler
+  :: forall m0 eff. MonadAff (db :: DB, wechaty :: WECHATY, periodic :: PERIODIC | eff) m0
+  => Contact -> Boolean -> String -> RoomT m0 Unit
 roomSubscriberHandler contact manager xs =
   go $ \m -> handleRoomSubscriberAction contact manager (parseMessage m)
 
-  where go :: forall e. (String -> RoomM (db :: DB | e) Unit) -> RoomM (db :: DB | e) Unit
+  where go :: forall m. Applicative m => (String -> RoomT m Unit) -> RoomT m Unit
         go f | startsWith xs "@小云" = f $ trim $ drop 3 xs
              | startsWith xs "@机器人" = f $ trim $ drop 4 xs
              | startsWith xs "@robot" = f $ trim $ drop 6 xs
@@ -268,13 +269,15 @@ showHelp =
   , "输出：帮助内容"
   ]
 
-handleRoomSubscriberAction :: forall eff. Contact -> Boolean -> Action -> RoomM (db :: DB | eff) Unit
+handleRoomSubscriberAction
+  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY | eff) m
+  => Contact -> Boolean -> Action -> RoomT m Unit
 handleRoomSubscriberAction contact _ (ShowGroup group) = do
-  mList <- lift
+  mList <- liftAff
     $ map (\(Message m) -> m.group <> "-" <> m.seq)
     <$> getMessageList group
 
-  g <- lift $ getGroup group
+  g <- liftAff $ getGroup group
 
   let h = case g of
             Nothing -> ""
@@ -284,14 +287,14 @@ handleRoomSubscriberAction contact _ (ShowGroup group) = do
 
 handleRoomSubscriberAction contact true (Sub group) = do
   rid <- roomTopic
-  lift $ roomSubscribeMessage rid group
+  liftAff $ roomSubscribeMessage rid group
   sayTo contact $ "订阅场景" <> group <> "成功"
 handleRoomSubscriberAction contact true (UnSub group) = do
   rid <- roomTopic
-  lift $ unRoomSubscribeMessage rid group
+  liftAff $ unRoomSubscribeMessage rid group
   sayTo contact $ "取消订阅场景" <> group <> "成功"
 handleRoomSubscriberAction contact _ (Showp group seq) = do
-  m <- lift $ getMessage group seq
+  m <- liftAff $ getMessage group seq
   case m of
     Nothing -> sayTo contact $ "场景" <> group <> "脚本" <> seq <> " 不存在"
     Just (Message m0) -> do

@@ -30,10 +30,6 @@ exports._sayTo = function(room, replyTo, obj) {
   }
 }
 
-exports.getRoomId = function(room) {
-  return room.id;
-}
-
 exports.getRoomTopic = function(room) {
   return room.topic();
 }
