@@ -172,7 +172,7 @@ handleManagerAction _ (SaveGroup (Group g)) = do
 
 handleManagerAction _ (SetGroupRepeat g t) = do
   lift $ setGroupRepeat g t
-  if t > 0.0 then say $ "重复场景" <> g <> " " <> formatTimeString t <> " 成功"
+  if t > 0.0 then say $ "修改场景" <> g <> " " <> formatTimeString t <> " 成功"
     else say $ "取消重复场景" <> g <> " 成功"
 
 handleManagerAction _ Help = do
@@ -192,7 +192,7 @@ handleManagerAction _ Help = do
       , ""
       , "重复场景"
       , "输入: 重复场景 1 1h"
-      , "输出: 重复场景 1 1h 成功"
+      , "输出: 修改场景1 成功"
       , "(时间可以是  1d 1h 1m 1s, 如果时间为空则输出: 取消重复场景1)"
       ]
     , showHelp
@@ -211,7 +211,7 @@ handleSubscriberAction (ShowGroup group) = do
 
   let h = case g of
             Nothing -> ""
-            Just (Group g') -> "场景: " <> g'.name <> "\n"
+            Just (Group g') -> "场景: " <> g'.name <> "\n" <> "重复: " <> formatTimeString g'.repeat <> "\n"
 
   say $ h <> "回复代码查看脚本:\n" <> joinWith "\n" mList
 

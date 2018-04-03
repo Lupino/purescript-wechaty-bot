@@ -44,7 +44,7 @@ import Data.Foreign (F, Foreign)
 import Data.Foreign.Class (class Decode, decode)
 import Data.Foreign.Index (readProp)
 import Data.Maybe (Maybe(..))
-import Data.String (drop, null)
+import Data.String (drop, null, take)
 
 foreign import data DB :: Effect
 
