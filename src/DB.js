@@ -242,14 +242,16 @@ var tsH = 60 * 60;
 var tsM = 60;
 
 exports.formatTimeString = function(t) {
-  if (t > tsD) {
+  if (t >= tsD) {
     return Math.floor(t / tsD) + 'd ' + exports.formatTimeString(t % tsD);
-  } else if (t > tsH) {
+  } else if (t >= tsH) {
     return Math.floor(t / tsH) + 'h ' + exports.formatTimeString(t % tsH);
-  } else if (t > tsM) {
+  } else if (t >= tsM) {
     return Math.floor(t / tsM) + 'm ' + exports.formatTimeString(t % tsM);
-  } else {
+  } else if (t > 0) {
     return t + 's';
+  } else {
+    return '';
   }
 }
 
