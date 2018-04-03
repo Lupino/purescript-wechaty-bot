@@ -11,7 +11,8 @@ module Wechaty.Room
 import Prelude
 import Data.Maybe (Maybe (..))
 import Control.Promise (Promise, toAff)
-import Wechaty.Types (Room, RoomM, Contact)
+import Wechaty.Types (Room, RoomM)
+import Wechaty.Contact (Contact)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Class (liftEff)

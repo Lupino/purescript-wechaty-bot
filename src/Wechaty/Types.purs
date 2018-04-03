@@ -1,10 +1,6 @@
 module Wechaty.Types
   ( WECHATY
 
-  , Contact
-  , ContactM
-  , runContactM
-
   , Room
   , RoomM
   , runRoomM
@@ -16,12 +12,6 @@ import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (kind Effect)
 
 foreign import data WECHATY :: Effect
-
-foreign import data Contact :: Type
-type ContactM eff = ReaderT Contact (Aff (wechaty :: WECHATY | eff))
-
-runContactM :: forall a eff. Contact -> ContactM eff a -> Aff (wechaty :: WECHATY | eff) a
-runContactM contact = flip runReaderT contact
 
 foreign import data Room :: Type
 type RoomM eff = ReaderT Room (Aff (wechaty :: WECHATY | eff))

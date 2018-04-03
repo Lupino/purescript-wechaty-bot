@@ -1,22 +1,31 @@
 module Wechaty.Contact
-  ( find
+  ( Contact
+  , ContactT
+  , runContactT
+  , find
   , say
-  , getContactId
   , getContactName
-  , contactId
   , contactName
+  , module Wechaty.Types
   ) where
 
 import Prelude
-import Control.Promise (Promise, toAff)
-import Wechaty.Types (Contact, ContactM)
-import Control.Monad.Eff (Eff)
+
 import Control.Monad.Aff (Aff)
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Reader (ask, ReaderT, runReaderT)
+import Control.Promise (Promise, toAff)
 import Data.Function.Uncurried (Fn2, runFn2)
-import Control.Monad.Reader (ask)
-import Control.Monad.Trans.Class (lift)
-import Data.Maybe (Maybe (..))
+import Data.Maybe (Maybe(..))
+import Wechaty.Types (WECHATY)
+
+foreign import data Contact :: Type
+type ContactT m = ReaderT Contact m
+
+runContactT :: forall a m. Contact -> ContactT m a -> m a
+runContactT contact = flip runReaderT contact
 
 foreign import _find :: forall eff. String
                      -> (Contact -> Maybe Contact)
@@ -31,16 +40,16 @@ foreign import _say :: forall a eff. Fn2 Contact a (Eff eff (Promise Unit))
 runSay :: forall a eff. Contact -> a -> Aff eff Unit
 runSay contact a = liftEff (runFn2 _say contact a) >>= toAff
 
-say :: forall a eff. a -> ContactM eff Unit
+say
+  :: forall a m eff. MonadAff (wechaty :: WECHATY | eff) m
+  => a -> ContactT m Unit
 say a = do
   contact <- ask
-  lift $ runSay contact a
+  liftAff $ runSay contact a
 
-contactId :: forall eff. ContactM eff String
-contactId = getContactId <$> ask
-
-contactName :: forall eff. ContactM eff String
+contactName
+  :: forall m. Monad m
+  => ContactT m String
 contactName = getContactName <$> ask
 
-foreign import getContactId :: Contact -> String
 foreign import getContactName :: Contact -> String

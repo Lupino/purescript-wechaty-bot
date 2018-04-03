@@ -6,12 +6,9 @@ module Robot
 
 import Prelude
 
+import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Trans.Class (lift)
-import DB (DB, Message(..), message, setContent, setSchedAt, getMessageList,
-           getMessage, deleteMessage, createMessage, setUser, updateMessage,
-           subscribeMessage, unSubscribeMessage, roomSubscribeMessage,
-           unRoomSubscribeMessage, Group(..), mkGroup, saveGroup, getGroup,
-           setGroupRepeat)
+import DB (DB, Message(..), message, setContent, setSchedAt, getMessageList, getMessage, deleteMessage, createMessage, setUser, updateMessage, subscribeMessage, unSubscribeMessage, roomSubscribeMessage, unRoomSubscribeMessage, Group(..), mkGroup, saveGroup, getGroup, setGroupRepeat)
 import Data.Array ((!!), concat)
 import Data.Either (fromRight)
 import Data.Maybe (Maybe(..), fromJust, fromMaybe)
@@ -20,10 +17,10 @@ import Data.String.Regex (Regex, match, regex, test)
 import Data.String.Regex.Flags (noFlags)
 import Partial.Unsafe (unsafePartial)
 import Periodic.Client (Client, PERIODIC, submitJob, removeJob)
-import Wechaty.Contact (contactName, say)
-import Wechaty.Room (sayTo, roomTopic)
-import Wechaty.Types (Contact, ContactM, RoomM)
 import Utils (startsWith, momentFormat, convertSchedAt, parseTimeString, formatTimeString)
+import Wechaty.Contact (Contact, ContactT, contactName, say)
+import Wechaty.Room (sayTo, roomTopic)
+import Wechaty.Types (RoomM, WECHATY)
 
 reCreateMsg :: Regex
 reCreateMsg = unsafePartial
@@ -116,10 +113,14 @@ parseShowAction xs = unsafePartial $ fromMaybe NoAction go
            seq   <- unsafePartial $ fromJust <$> m !! 2
            pure $ Showp group seq
 
-subscriberHandler :: forall eff. String -> ContactM (db :: DB | eff) Unit
+subscriberHandler
+  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY | eff) m
+  => String -> ContactT m Unit
 subscriberHandler xs = handleSubscriberAction (parseMessage xs)
 
-managerHandler :: forall eff. Client -> String -> ContactM (db :: DB, periodic :: PERIODIC | eff) Unit
+managerHandler
+  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY, periodic :: PERIODIC | eff) m
+  => Client -> String -> ContactT m Unit
 managerHandler client xs = handleManagerAction client (parseMessage xs)
 
 roomSubscriberHandler :: forall eff. Contact -> Boolean -> String -> RoomM (db :: DB | eff) Unit
@@ -133,29 +134,31 @@ roomSubscriberHandler contact manager xs =
              | startsWith xs "@xiaoyun" = f $ trim $ drop 8 xs
              | otherwise = pure unit
 
-handleManagerAction :: forall eff. Client -> Action -> ContactM (db :: DB, periodic :: PERIODIC | eff) Unit
+handleManagerAction
+  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY, periodic :: PERIODIC | eff) m
+  => Client -> Action -> ContactT m Unit
 handleManagerAction client (Msg (Message m)) = do
-  m0 <- lift $ getMessage m.group m.seq
+  m0 <- liftAff $ getMessage m.group m.seq
   uid <- contactName
   case m0 of
     Nothing -> do
-      lift $ createMessage (setUser uid $ Message m)
-      lift $ submitJob client
+      liftAff $ createMessage (setUser uid $ Message m)
+      liftAff $ submitJob client
         { func: "send-message"
         , name: m.group <> "-" <> m.seq
         , sched_at: m.sched_at
         }
       say $ "场景" <> m.group <> "脚本" <> m.seq <> " 增加成功"
     Just _ -> if null m.content then do
-                lift $ deleteMessage m.group m.seq
-                lift $ removeJob client
+                liftAff $ deleteMessage m.group m.seq
+                liftAff $ removeJob client
                   { func: "send-message"
                   , name: m.group <> "-" <> m.seq
                   }
                 say $ "场景" <> m.group <> "脚本" <> m.seq <> " 删除成功"
                 else do
-                  lift $ updateMessage (Message m)
-                  lift $ submitJob client
+                  liftAff $ updateMessage (Message m)
+                  liftAff $ submitJob client
                     { func: "send-message"
                     , name: m.group <> "-" <> m.seq
                     , sched_at: m.sched_at
@@ -164,11 +167,11 @@ handleManagerAction client (Msg (Message m)) = do
 
 handleManagerAction _ (SaveGroup (Group g)) = do
   n <- contactName
-  lift $ saveGroup (setUser n $ Group g)
+  liftAff $ saveGroup (setUser n $ Group g)
   say $ "场景" <> g.group <> " 修改成功"
 
 handleManagerAction _ (SetGroupRepeat g t) = do
-  lift $ setGroupRepeat g t
+  liftAff $ setGroupRepeat g t
   if t > 0.0 then say $ "修改场景" <> g <> " " <> formatTimeString t <> " 成功"
     else say $ "取消重复场景" <> g <> " 成功"
 
@@ -198,13 +201,15 @@ handleManagerAction _ Help = do
 
 handleManagerAction _ act = handleSubscriberAction act
 
-handleSubscriberAction :: forall eff. Action -> ContactM (db :: DB | eff) Unit
+handleSubscriberAction
+  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY | eff) m
+  => Action -> ContactT m Unit
 handleSubscriberAction (ShowGroup group) = do
-  mList <- lift
+  mList <- liftAff
     $ map (\(Message m) -> m.group <> "-" <> m.seq)
     <$> getMessageList group
 
-  g <- lift $ getGroup group
+  g <- liftAff $ getGroup group
 
   let h = case g of
             Nothing -> ""
@@ -213,7 +218,7 @@ handleSubscriberAction (ShowGroup group) = do
   say $ h <> "回复代码查看脚本:\n" <> joinWith "\n" mList
 
 handleSubscriberAction (Showp group seq) = do
-  m <- lift $ getMessage group seq
+  m <- liftAff $ getMessage group seq
   case m of
     Nothing -> say $ "场景" <> group <> "脚本" <> seq <> " 不存在"
     Just (Message m0) -> do
@@ -225,12 +230,12 @@ handleSubscriberAction (Showp group seq) = do
 
 handleSubscriberAction (Sub group) = do
   uid <- contactName
-  lift $ subscribeMessage uid group
+  liftAff $ subscribeMessage uid group
   say $ "订阅场景" <> group <> "成功"
 
 handleSubscriberAction (UnSub group) = do
   uid <- contactName
-  lift $ unSubscribeMessage uid group
+  liftAff $ unSubscribeMessage uid group
   say $ "取消订阅场景" <> group <> "成功"
 
 handleSubscriberAction Help =

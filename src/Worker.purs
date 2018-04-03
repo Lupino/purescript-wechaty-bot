@@ -21,9 +21,9 @@ import Data.Time.Duration (Milliseconds(..))
 import Math as M
 import Partial.Unsafe (unsafePartial)
 import Periodic.Worker (PERIODIC, addFunc, done, name, runWorkerT, schedLater, work)
-import Wechaty.Contact (say, find)
+import Wechaty.Contact (say, find, runContactT)
 import Wechaty.Room as R
-import Wechaty.Types (WECHATY, runContactM, runRoomM)
+import Wechaty.Types (WECHATY, runRoomM)
 
 type TaskM eff = MaybeT (Aff (wechaty :: WECHATY, db :: DB, now :: NOW | eff))
 
@@ -79,7 +79,7 @@ trySend f = lift <<< void <<< runMaybeT <<< try <<< f
 sendMessage :: forall eff. String -> Message -> String -> TaskM eff Unit
 sendMessage g (Message m) n = do
   contact <- MaybeT $ find n
-  lift $ runContactM contact $ do
+  lift $ runContactT contact $ do
     say $ g <> m.content
 
 sendRoomMessage :: forall eff. String -> Message -> String -> TaskM eff Unit

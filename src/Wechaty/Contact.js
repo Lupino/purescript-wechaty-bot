@@ -30,10 +30,6 @@ exports._say = function(contact, obj) {
   }
 }
 
-exports.getContactId = function(contact) {
-  return contact.id;
-}
-
 exports.getContactName = function(contact) {
   return contact.name();
 }

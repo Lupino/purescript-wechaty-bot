@@ -11,21 +11,20 @@ module Wechaty
   , onLogout
   , onMessage
   , start
-  , module Exports
+  , module Wechaty.Types
   ) where
 
 import Prelude
 
-import Control.Monad.Aff (launchAff_)
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Reader (ask, ReaderT, runReaderT)
 import Control.Promise (Promise, toAff)
 import Data.Function.Uncurried (Fn2, runFn2)
+import Wechaty.Contact (Contact, ContactT, runContactT)
 import Wechaty.Message (MessageT, Message, runMessageT)
-import Wechaty.Types (Contact, ContactM, WECHATY, runContactM)
-import Wechaty.Types (WECHATY) as Exports
+import Wechaty.Types (WECHATY)
 
 foreign import data Wechaty :: Type
 
@@ -64,22 +63,24 @@ foreign import _onLogout :: forall eff. Fn2 Wechaty (Contact -> Eff eff Unit) (E
 
 onLogout
   :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
-  => ContactM eff Unit -> WechatyT eff m Unit
+  => ContactT m Unit -> WechatyT eff m Unit
 onLogout m = do
-  (WechatyConfig _ bot) <- ask
-  liftEff $ runFn2 _onLogout bot $ doContact m
+  (WechatyConfig runEff bot) <- ask
+  liftEff $ runFn2 _onLogout bot $ doContact runEff m
 
 foreign import _onLogin :: forall eff. Fn2 Wechaty (Contact -> Eff eff Unit) (Eff eff Unit)
 
-doContact :: forall eff. ContactM eff Unit -> Contact -> Eff (wechaty :: WECHATY | eff) Unit
-doContact m contact = launchAff_ $ runContactM contact m
+doContact
+  :: forall m eff. (m Unit -> Eff (wechaty :: WECHATY | eff) Unit)
+  -> ContactT m Unit -> Contact -> Eff (wechaty :: WECHATY | eff) Unit
+doContact runEff m contact = runEff $ runContactT contact m
 
 onLogin
   :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
-  => ContactM eff Unit -> WechatyT eff m Unit
+  => ContactT m Unit -> WechatyT eff m Unit
 onLogin m = do
-  (WechatyConfig _ bot) <- ask
-  liftEff $ runFn2 _onLogin bot $ doContact m
+  (WechatyConfig runEff bot) <- ask
+  liftEff $ runFn2 _onLogin bot $ doContact runEff m
 
 foreign import _onMessage :: forall eff. Fn2 Wechaty (Message -> Eff eff Unit) (Eff eff Unit)
 
@@ -92,7 +93,6 @@ onMessage
   :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
   => MessageT m Unit -> WechatyT eff m Unit
 onMessage m = do
-  bot <- ask
   (WechatyConfig runEff bot) <- ask
   liftEff $ runFn2 _onMessage bot $ doMessage runEff m
 

@@ -10,6 +10,7 @@ module Wechaty.Message
   , Message
   , MessageT
   , runMessageT
+  , module Wechaty.Types
   ) where
 
 import Prelude
@@ -23,7 +24,8 @@ import Control.Monad.Trans.Class (lift)
 import Control.Promise (Promise, toAff)
 import Data.Function.Uncurried (Fn2, Fn3, runFn2, runFn3)
 import Data.Maybe (Maybe(..))
-import Wechaty.Types (Contact, ContactM, Room, RoomM, WECHATY, runContactM, runRoomM)
+import Wechaty.Contact (Contact, ContactT, runContactT)
+import Wechaty.Types (Room, RoomM, WECHATY, runRoomM)
 
 foreign import data Message :: Type
 type MessageT m = ReaderT Message m
@@ -98,9 +100,9 @@ handleRoom r manager m = do
   liftAff $ runRoomM r (m f manager msg)
 
 handleContact
-  :: forall m eff. MonadAff (wechaty :: WECHATY | eff) m
-  => (String -> ContactM eff Unit) -> MessageT m Unit
+  :: forall m eff. MonadEff (wechaty :: WECHATY | eff) m
+  => (String -> ContactT m Unit) -> MessageT m Unit
 handleContact m = do
   msg <- content
   f <- from
-  liftAff $ runContactM f (m msg)
+  lift $ runContactT f (m msg)
