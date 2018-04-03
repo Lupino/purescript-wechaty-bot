@@ -46,4 +46,4 @@ main = do
       start
       onError $ \msg -> log $ "error: " <> msg
 
-  launchAff_ launchWorker
+  launchWorker

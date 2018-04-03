@@ -5,12 +5,12 @@ module Worker
 import Prelude
 
 import Config (get)
-import Control.Monad.Aff (Aff)
+import Control.Monad.Aff (Aff, launchAff_)
+import Control.Monad.Eff (Eff)
 import Control.Monad.Error.Class (try)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.Monad.Trans.Class (lift)
-import DB (DB, Group(..), Message(..), getGroup, getMessage,
-           getRoomSubscribeList, getSubscribeList)
+import DB (DB, Group(..), Message(..), getGroup, getMessage, getRoomSubscribeList, getSubscribeList)
 import Data.Array ((!!), head, tail, null)
 import Data.Int (floor)
 import Data.Maybe (Maybe(..), fromJust, fromMaybe)
@@ -23,9 +23,9 @@ import Wechaty.Types (WECHATY, runContactM, runRoomM)
 
 type TaskM eff = MaybeT (Aff (wechaty :: WECHATY, db :: DB | eff))
 
-launchWorker :: forall eff. Aff (periodic :: PERIODIC, db :: DB, wechaty :: WECHATY | eff) Unit
+launchWorker :: forall eff. Eff (periodic :: PERIODIC, db :: DB, wechaty :: WECHATY | eff) Unit
 launchWorker = do
-  runWorkerT (get "periodic") $ do
+  runWorkerT launchAff_ (get "periodic") $ do
     addFunc "send-message" $ do
        n <- name
        t <- lift $ map (fromMaybe 0.0) $ runMaybeT $ runTask n

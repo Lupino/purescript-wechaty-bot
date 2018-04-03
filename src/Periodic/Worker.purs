@@ -1,5 +1,5 @@
 module Periodic.Worker
-  ( Worker
+  ( WK
   , WorkerT
   , runWorkerT
   , addFunc
@@ -18,52 +18,36 @@ module Periodic.Worker
 
 import Prelude
 
-import Control.Monad.Eff.Class (class MonadEff)
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
-import Control.Monad.Trans.Class (lift)
 import Periodic.Types (PERIODIC)
 
 foreign import data Job :: Type
 foreign import data Worker :: Type
-foreign import newWorker
-  :: forall a m eff. MonadEff (periodic :: PERIODIC | eff) m
-  => a -> m Worker
-foreign import _work
-  :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
-  => Worker -> Int -> m Unit
-foreign import _addFunc
-  :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
-  => Worker -> String -> (Job -> m Unit) -> m Unit
+foreign import newWorker :: forall a eff.  a -> Eff eff Worker
+foreign import _work :: forall eff.  Worker -> Int -> Eff eff Unit
+foreign import _addFunc :: forall eff. Worker -> String -> (Job -> Eff eff Unit) -> Eff eff Unit
 
-foreign import _done
-  :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
-  => Job -> m Unit
-foreign import _fail
-  :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
-  => Job -> m Unit
-foreign import _schedLater
-  :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
-  => Job -> Int -> m Unit
+foreign import _done :: forall eff. Job -> Eff eff Unit
+foreign import _fail :: forall eff. Job -> Eff eff Unit
+foreign import _schedLater :: forall eff. Job -> Int -> Eff eff Unit
 
-foreign import _funcName
-  :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
-  => Job -> m String
-foreign import _name
-  :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
-  => Job -> m String
-foreign import _workload
-  :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
-  => Job -> m String
+foreign import _funcName :: forall eff. Job -> Eff eff String
+foreign import _name :: forall eff. Job -> Eff eff String
+foreign import _workload :: forall eff. Job -> Eff eff String
 
-type WorkerT m = ReaderT Worker m
+data WK eff m = WK (m Unit -> Eff (periodic :: PERIODIC | eff) Unit) Worker
+
+type WorkerT eff m = ReaderT (WK eff m) m
 type JobT m = ReaderT Job m
 
 runWorkerT
   :: forall a m eff. MonadEff (periodic :: PERIODIC | eff) m
-  => a -> WorkerT m a -> m a
-runWorkerT a m = do
+   => (m Unit -> Eff (periodic :: PERIODIC | eff) Unit) -> a -> WorkerT eff m Unit -> Eff (periodic :: PERIODIC | eff) Unit
+runWorkerT runEff a m = do
   w <- newWorker a
-  runReaderT m w
+  runEff $ runReaderT m (WK runEff w)
 
 runJobT
   :: forall a m eff. MonadEff (periodic :: PERIODIC | eff) m
@@ -72,44 +56,45 @@ runJobT a = flip runReaderT a
 
 addFunc
   :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
-  => String -> JobT m Unit -> WorkerT m Unit
+  => String -> JobT m Unit -> WorkerT eff m Unit
 addFunc func m = do
-  w <- ask
-  lift $ _addFunc w func $ flip runJobT m
+  (WK runEff w) <- ask
+  liftEff $ _addFunc w func $ \job ->
+    runEff $ runJobT job m
 
 work
   :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
-  => Int -> WorkerT m Unit
+  => Int -> WorkerT eff m Unit
 work size = do
-  w <- ask
-  lift $ _work w size
+  (WK _ w) <- ask
+  liftEff $ _work w size
 
 done
   :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
   => JobT m Unit
-done = lift <<< _done =<< ask
+done = liftEff <<< _done =<< ask
 
 fail
   :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
   => JobT m Unit
-fail = lift <<< _fail =<< ask
+fail = liftEff <<< _fail =<< ask
 
 schedLater
   :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
   =>  Int -> JobT m Unit
-schedLater delay = lift <<< flip _schedLater delay =<< ask
+schedLater delay = liftEff <<< flip _schedLater delay =<< ask
 
 funcName
   :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
   => JobT m String
-funcName = lift <<< _funcName =<< ask
+funcName = liftEff <<< _funcName =<< ask
 
 name
   :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
   => JobT m String
-name = lift <<< _name =<< ask
+name = liftEff <<< _name =<< ask
 
 workload
   :: forall m eff. MonadEff (periodic :: PERIODIC | eff) m
   => JobT m String
-workload = lift <<< _workload =<< ask
+workload = liftEff <<< _workload =<< ask
