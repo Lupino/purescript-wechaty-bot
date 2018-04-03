@@ -11,7 +11,7 @@ import DB (DB, Message(..), message, setContent, setSchedAt, getMessageList,
            getMessage, deleteMessage, createMessage, setUser, updateMessage,
            subscribeMessage, unSubscribeMessage, roomSubscribeMessage,
            unRoomSubscribeMessage, Group(..), mkGroup, saveGroup, getGroup,
-           setGroupRepeat, parseTimeString, formatTimeString)
+           setGroupRepeat)
 import Data.Array ((!!), concat)
 import Data.Either (fromRight)
 import Data.Maybe (Maybe(..), fromJust, fromMaybe)
@@ -23,10 +23,7 @@ import Periodic.Client (Client, PERIODIC, submitJob, removeJob)
 import Wechaty.Contact (contactName, say)
 import Wechaty.Room (sayTo, roomTopic)
 import Wechaty.Types (Contact, ContactM, RoomM)
-
-foreign import startsWith :: String -> String -> Boolean
-foreign import convertSchedAt :: forall a. a -> Number
-foreign import momentFormat :: Number -> String -> String
+import Utils (startsWith, momentFormat, convertSchedAt, parseTimeString, formatTimeString)
 
 reCreateMsg :: Regex
 reCreateMsg = unsafePartial

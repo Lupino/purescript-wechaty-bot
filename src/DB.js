@@ -236,31 +236,3 @@ exports._getRoomSubscribeList = function(group) {
       });
   }
 }
-
-var tsD = 24 * 60 * 60;
-var tsH = 60 * 60;
-var tsM = 60;
-
-exports.formatTimeString = function(t) {
-  if (t >= tsD) {
-    return Math.floor(t / tsD) + 'd ' + exports.formatTimeString(t % tsD);
-  } else if (t >= tsH) {
-    return Math.floor(t / tsH) + 'h ' + exports.formatTimeString(t % tsH);
-  } else if (t >= tsM) {
-    return Math.floor(t / tsM) + 'm ' + exports.formatTimeString(t % tsM);
-  } else if (t > 0) {
-    return t + 's';
-  } else {
-    return '';
-  }
-}
-
-exports.startsWith = function(s) {
-  return function(s1) {
-    return s.startsWith(s1);
-  }
-}
-
-exports.readNumber = function(n) {
-  return Number(n) || 0;
-}

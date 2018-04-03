@@ -1,7 +1,5 @@
 module DB
   ( DB
-  , formatTimeString
-  , parseTimeString
   , class HasUser
   , getUser
   , setUser
@@ -44,28 +42,8 @@ import Data.Foreign (F, Foreign)
 import Data.Foreign.Class (class Decode, decode)
 import Data.Foreign.Index (readProp)
 import Data.Maybe (Maybe(..))
-import Data.String (drop, null, take)
 
 foreign import data DB :: Effect
-
-foreign import formatTimeString :: Number -> String
-
-foreign import readNumber :: String -> Number
-foreign import startsWith :: String -> String -> Boolean
-
--- 1d 10h 10m 10s
-parseTimeString_ :: String -> String -> Number
-parseTimeString_ r n
-  | startsWith n "d" = readNumber r * 24.0 * 60.0 * 60.0 + parseTimeString_ "" (drop 1 n)
-  | startsWith n "h" = readNumber r * 60.0 * 60.0 + parseTimeString_ "" (drop 1 n)
-  | startsWith n "m" = readNumber r * 60.0 + parseTimeString_ "" (drop 1 n)
-  | startsWith n "s" = readNumber r + parseTimeString_ "" (drop 1 n)
-  | startsWith n " " = parseTimeString_ r (drop 1 n)
-  | null n = 0.0
-  | otherwise = parseTimeString_ (r <> take 1 n) (drop 1 n)
-
-parseTimeString :: String -> Number
-parseTimeString = parseTimeString_ ""
 
 class HasUser a where
   setUser :: String -> a -> a
