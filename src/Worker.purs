@@ -70,4 +70,4 @@ sendRoomMessage :: forall eff. String -> Message -> String -> TaskM eff Unit
 sendRoomMessage g (Message m) topic = do
   room <- MaybeT $ R.find topic
   lift $ runRoomM room $ do
-    R.say $ "\n" <> g <> m.content
+    R.say $ g <> m.content
