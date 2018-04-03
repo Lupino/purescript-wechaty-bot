@@ -6,7 +6,6 @@ import Prelude
 
 import Config (get)
 import Control.Monad.Aff (Aff, launchAff_)
-import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Now (now, NOW)
 import Control.Monad.Error.Class (try)
@@ -16,10 +15,10 @@ import DB (DB, Group(..), Message(..), getGroup, getMessage, getRoomSubscribeLis
 import Data.Array ((!!), head, tail, null)
 import Data.DateTime.Instant (unInstant)
 import Data.Int (floor)
-import Math as M
 import Data.Maybe (Maybe(..), fromJust, fromMaybe)
 import Data.String (Pattern(..), split)
-import Data.Time.Duration (Milliseconds (..))
+import Data.Time.Duration (Milliseconds(..))
+import Math as M
 import Partial.Unsafe (unsafePartial)
 import Periodic.Worker (PERIODIC, addFunc, done, name, runWorkerT, schedLater, work)
 import Wechaty.Contact (say, find)
@@ -28,7 +27,7 @@ import Wechaty.Types (WECHATY, runContactM, runRoomM)
 
 type TaskM eff = MaybeT (Aff (wechaty :: WECHATY, db :: DB, now :: NOW | eff))
 
-launchWorker :: forall eff. Eff (periodic :: PERIODIC, db :: DB, wechaty :: WECHATY, now :: NOW | eff) Unit
+launchWorker :: forall eff. Aff (periodic :: PERIODIC, db :: DB, wechaty :: WECHATY, now :: NOW | eff) Unit
 launchWorker = do
   runWorkerT launchAff_ (get "periodic") $ do
     addFunc "send-message" $ do

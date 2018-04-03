@@ -7,6 +7,7 @@ import Control.Monad.Aff (launchAff_)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (log, CONSOLE)
+import Control.Monad.Eff.Now (NOW)
 import DB (DB)
 import Data.Maybe (Maybe(..))
 import Periodic.Client (PERIODIC, newClient)
@@ -16,7 +17,6 @@ import Wechaty.Contact (say)
 import Wechaty.Message (handleContact, handleRoom, room, self)
 import Wechaty.Types (WECHATY, runWechatyM)
 import Worker (launchWorker)
-import Control.Monad.Eff.Now (NOW)
 
 handleScan :: forall eff. String -> Int -> Eff eff Unit
 handleScan url 200 = pure unit
@@ -27,7 +27,7 @@ main :: Eff (console :: CONSOLE, wechaty :: WECHATY, db :: DB, periodic :: PERIO
 main = do
   bot <- initWechaty
   client <- newClient (get "periodic") {max: 10}
-  launchAff_ $
+  launchAff_ $ do
     runWechatyM bot $ do
       onScan $ \url code -> do
         handleScan url code
@@ -47,4 +47,4 @@ main = do
       start
       onError $ \msg -> log $ "error: " <> msg
 
-  launchWorker
+    launchWorker

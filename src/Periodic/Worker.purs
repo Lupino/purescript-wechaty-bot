@@ -44,10 +44,11 @@ type JobT m = ReaderT Job m
 
 runWorkerT
   :: forall a m eff. MonadEff (periodic :: PERIODIC | eff) m
-   => (m Unit -> Eff (periodic :: PERIODIC | eff) Unit) -> a -> WorkerT eff m Unit -> Eff (periodic :: PERIODIC | eff) Unit
+   => (m Unit -> Eff (periodic :: PERIODIC | eff) Unit)
+   -> a -> WorkerT eff m Unit -> m Unit
 runWorkerT runEff a m = do
-  w <- newWorker a
-  runEff $ runReaderT m (WK runEff w)
+  w <- liftEff $ newWorker a
+  runReaderT m (WK runEff w)
 
 runJobT
   :: forall a m eff. MonadEff (periodic :: PERIODIC | eff) m
