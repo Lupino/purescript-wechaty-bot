@@ -12,10 +12,10 @@ import DB (DB)
 import Data.Maybe (Maybe(..))
 import Periodic.Client (PERIODIC, newClient)
 import Robot (managerHandler, subscriberHandler, roomSubscriberHandler)
-import Wechaty (initWechaty, onScan, showQrcode, onLogin, onMessage, start, onError)
+import Wechaty (initWechaty, onScan, showQrcode, onLogin, onMessage, start, onError, runWechatyT)
 import Wechaty.Contact (say)
 import Wechaty.Message (handleContact, handleRoom, room, self)
-import Wechaty.Types (WECHATY, runWechatyM)
+import Wechaty.Types (WECHATY)
 import Worker (launchWorker)
 
 handleScan :: forall eff. String -> Int -> Eff eff Unit
@@ -28,7 +28,7 @@ main = do
   bot <- initWechaty
   client <- newClient (get "periodic") {max: 10}
   launchAff_ $ do
-    runWechatyM bot $ do
+    runWechatyT bot $ do
       onScan $ \url code -> do
         handleScan url code
         log url
