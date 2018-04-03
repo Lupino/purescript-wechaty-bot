@@ -1,5 +1,7 @@
 module DB
   ( DB
+  , formatTimeString
+  , parseTimeString
   , class HasUser
   , getUser
   , setUser
@@ -8,6 +10,7 @@ module DB
   , mkGroup
   , saveGroup
   , getGroup
+  , setGroupRepeat
 
   , Message (..)
   , message
@@ -41,8 +44,28 @@ import Data.Foreign (F, Foreign)
 import Data.Foreign.Class (class Decode, decode)
 import Data.Foreign.Index (readProp)
 import Data.Maybe (Maybe(..))
+import Data.String (drop, null)
 
 foreign import data DB :: Effect
+
+foreign import formatTimeString :: Number -> String
+
+foreign import readNumber :: String -> Number
+foreign import startsWith :: String -> String -> Boolean
+
+-- 1d 10h 10m 10s
+parseTimeString_ :: String -> String -> Number
+parseTimeString_ r n
+  | startsWith n "d" = readNumber r * 24.0 * 60.0 * 60.0 + parseTimeString_ "" (drop 1 n)
+  | startsWith n "h" = readNumber r * 60.0 * 60.0 + parseTimeString_ "" (drop 1 n)
+  | startsWith n "m" = readNumber r * 60.0 + parseTimeString_ "" (drop 1 n)
+  | startsWith n "s" = readNumber r + parseTimeString_ "" (drop 1 n)
+  | startsWith n " " = parseTimeString_ r (drop 1 n)
+  | null n = 0.0
+  | otherwise = parseTimeString_ r (drop 1 n)
+
+parseTimeString :: String -> Number
+parseTimeString = parseTimeString_ ""
 
 class HasUser a where
   setUser :: String -> a -> a
@@ -53,6 +76,7 @@ data Group = Group
   { user :: String
   , group :: String
   , name :: String
+  , repeat :: Number
   , created_at :: Number
   }
 
@@ -64,11 +88,13 @@ instance groupDecode :: Decode Group where
     uid <- decode =<< readProp "user" o
     g <- decode =<< readProp "group" o
     n <- decode =<< readProp "name" o
+    r <- decode =<< readProp "repeat" o
     ct <- decode =<< readProp "created_at" o
     pure $ Group
       { user: uid
       , group: g
       , name: n
+      , repeat: r
       , created_at: ct
       }
 
@@ -77,7 +103,8 @@ instance groupHasUser :: HasUser Group where
   getUser (Group g) = g.user
 
 mkGroup :: String -> String -> Group
-mkGroup g n = Group { user: "", group: g, name: n, created_at: 0.0 }
+mkGroup g n = Group
+  { user: "", group: g, name: n, repeat: 0.0, created_at: 0.0 }
 
 data Message = Message
   { user :: String
@@ -142,6 +169,7 @@ toAff' p = decodeMaybe <$> toAff p
 
 foreign import _saveGroup :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _getGroup :: forall a eff. String -> (a -> Maybe a) -> Maybe a -> Eff (db :: DB | eff) (Promise (Maybe a))
+foreign import _setGroupRepeat :: forall eff. String -> Number -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _createMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _updateMessage :: forall a eff. a -> Eff (db :: DB | eff) (Promise Unit)
 foreign import _getMessage :: forall a b eff. a -> (b -> Maybe b) -> Maybe b -> Eff (db :: DB | eff) (Promise (Maybe b))
@@ -159,6 +187,9 @@ saveGroup (Group u) = liftEff (_saveGroup u) >>= toAff
 
 getGroup :: forall eff. String -> Aff (db :: DB | eff) (Maybe Group)
 getGroup group = liftEff (_getGroup group Just Nothing) >>= toAff'
+
+setGroupRepeat :: forall eff. String -> Number -> Aff (db :: DB | eff) Unit
+setGroupRepeat g repeat = liftEff (_setGroupRepeat g repeat) >>= toAff
 
 createMessage :: forall eff. Message -> Aff (db :: DB | eff) Unit
 createMessage (Message m) = liftEff (_createMessage m) >>= toAff

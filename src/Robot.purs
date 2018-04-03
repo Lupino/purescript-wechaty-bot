@@ -10,7 +10,8 @@ import Control.Monad.Trans.Class (lift)
 import DB (DB, Message(..), message, setContent, setSchedAt, getMessageList,
            getMessage, deleteMessage, createMessage, setUser, updateMessage,
            subscribeMessage, unSubscribeMessage, roomSubscribeMessage,
-           unRoomSubscribeMessage, Group(..), mkGroup, saveGroup, getGroup)
+           unRoomSubscribeMessage, Group(..), mkGroup, saveGroup, getGroup,
+           setGroupRepeat, parseTimeString, formatTimeString)
 import Data.Array ((!!), concat)
 import Data.Either (fromRight)
 import Data.Maybe (Maybe(..), fromJust, fromMaybe)
@@ -47,6 +48,7 @@ data Action =
   | UnSub String
   | Showp String String
   | SaveGroup Group
+  | SetGroupRepeat String Number
   | Help
   | NoAction
 
@@ -61,6 +63,7 @@ parseMessage xs
   | startsWith xs "帮助" = Help
   | startsWith xs "help" = Help
   | startsWith xs "编辑场景" = parseSaveGroupAction $ trim $ drop 4 xs
+  | startsWith xs "重复场景" = parseSetGroupRepeatAction $ trim $ drop 4 xs
   | test reCreateMsg xs = parseMsgAction xs
   | test reShowMsg xs = parseShowAction xs
   | otherwise = NoAction
@@ -74,6 +77,12 @@ parseSaveGroupAction :: String -> Action
 parseSaveGroupAction xs = go (takeWhile (_ /= ' ') xs) (trim $ dropWhile (_ /= ' ') xs)
   where go :: String -> String -> Action
         go g n | test reNum g || not (null n) = SaveGroup $ mkGroup g n
+               | otherwise = NoAction
+
+parseSetGroupRepeatAction :: String -> Action
+parseSetGroupRepeatAction xs = go (takeWhile (_ /= ' ') xs) (trim $ dropWhile (_ /= ' ') xs)
+  where go :: String -> String -> Action
+        go g n | test reNum g = SetGroupRepeat g $ parseTimeString n
                | otherwise = NoAction
 
 parseMsgAction :: String -> Action
@@ -161,6 +170,11 @@ handleManagerAction _ (SaveGroup (Group g)) = do
   lift $ saveGroup (setUser n $ Group g)
   say $ "场景" <> g.group <> " 修改成功"
 
+handleManagerAction _ (SetGroupRepeat g t) = do
+  lift $ setGroupRepeat g t
+  if t > 0.0 then say $ "重复场景" <> g <> " " <> formatTimeString t <> " 成功"
+    else say $ "取消重复场景" <> g <> " 成功"
+
 handleManagerAction _ Help = do
   say $ joinWith "\n" $ concat
     [ [ "场景脚本操作"
@@ -175,6 +189,11 @@ handleManagerAction _ Help = do
       , "编辑场景"
       , "输入: 编辑场景 1 提醒"
       , "输出: 场景1 修改成功"
+      , ""
+      , "重复场景"
+      , "输入: 重复场景 1 1h"
+      , "输出: 重复场景 1 1h 成功"
+      , "(时间可以是  1d 1h 1m 1s, 如果时间为空则输出: 取消重复场景1)"
       ]
     , showHelp
     , subscriberHelp
@@ -257,7 +276,7 @@ handleRoomSubscriberAction contact _ (ShowGroup group) = do
 
   let h = case g of
             Nothing -> ""
-            Just (Group g') -> "场景: " <> g'.name <> "\n"
+            Just (Group g') -> "场景: " <> g'.name <> "\n" <> "重复: " <> formatTimeString g'.repeat <> "\n"
 
   sayTo contact $ "\n" <> h <> "回复代码查看脚本:\n" <> joinWith "\n" mList
 

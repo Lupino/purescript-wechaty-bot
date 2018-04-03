@@ -18,6 +18,7 @@ var GroupSchema = new Schema({
   group:      {type: String, index: {unique: true}},
   user:       {type: String, index: true},
   name:       {type: String},
+  repeat:     {type: Number, default: 0},
   created_at: {type: Number, default: timestamp},
 });
 
@@ -96,6 +97,16 @@ exports._getGroup = function(group) {
             return nothing;
           });
       }
+    }
+  }
+}
+
+exports._setGroupRepeat = function(group) {
+  return function(repeat) {
+    return function() {
+      return Group.findOneAndUpdate({group: group}, {repeat: repeat})
+        .exec()
+        .then(unit)
     }
   }
 }
@@ -224,4 +235,30 @@ exports._getRoomSubscribeList = function(group) {
         })
       });
   }
+}
+
+var tsD = 24 * 60 * 60;
+var tsH = 60 * 60;
+var tsM = 60;
+
+exports.formatTimeString = function(t) {
+  if (t > tsD) {
+    return Math.floor(t / tsD) + 'd ' + exports.formatTimeString(t % tsD);
+  } else if (t > tsH) {
+    return Math.floor(t / tsH) + 'h ' + exports.formatTimeString(t % tsH);
+  } else if (t > tsM) {
+    return Math.floor(t / tsM) + 'm ' + exports.formatTimeString(t % tsM);
+  } else {
+    return t + 's';
+  }
+}
+
+exports.startsWith = function(s) {
+  return function(s1) {
+    return s.startsWith(s1);
+  }
+}
+
+exports.readNumber = function(n) {
+  return Number(n) || 0;
 }

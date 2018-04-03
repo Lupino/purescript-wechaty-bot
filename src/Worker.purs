@@ -28,11 +28,12 @@ launchWorker = do
   runWorkerT (get "periodic") $ do
     addFunc "send-message" $ do
        n <- name
-       void $ lift $ runMaybeT $ runTask n
-       done
+       t <- lift $ map (fromMaybe 0.0) $ runMaybeT $ runTask n
+       if t > 0.0 then schedLater (floor t)
+                  else done
     work 10
 
-runTask :: forall eff. String -> TaskM eff Unit
+runTask :: forall eff. String -> TaskM eff Number
 runTask xs = do
 
   g <- lift $ getGroup group
@@ -46,6 +47,11 @@ runTask xs = do
   loop (trySend $ sendMessage h m) uList
   rList <- lift $ getRoomSubscribeList group
   loop (trySend $ sendRoomMessage h m) rList
+
+  pure $ case g of
+           Nothing -> 0.0
+           Just (Group g') -> g'.repeat
+
   where ys = split (Pattern "-") xs
         group = unsafePartial $ fromMaybe "" $ ys !! 0
         seq = unsafePartial $ fromMaybe "" $ ys !! 1
