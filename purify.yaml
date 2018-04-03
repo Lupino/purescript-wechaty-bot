@@ -280,6 +280,12 @@ extra-deps:
   - purescript-prelude
   repo: https://github.com/purescript/purescript-nonempty
   commit: 1d53fbd8dead6446ab9f0c93ad02985d41de91e0
+- name: purescript-now
+  deps:
+  - purescript-eff
+  - purescript-datetime
+  repo: https://github.com/purescript-contrib/purescript-now
+  commit: 91c9e4bc66021ae7d62c9d6e38bd6f13ddf12197
 - name: purescript-nullable
   deps:
   - purescript-maybe

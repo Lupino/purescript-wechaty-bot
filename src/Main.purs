@@ -16,13 +16,14 @@ import Wechaty.Contact (say)
 import Wechaty.Message (handleContact, handleRoom, room, self)
 import Wechaty.Types (WECHATY, runWechatyM)
 import Worker (launchWorker)
+import Control.Monad.Eff.Now (NOW)
 
 handleScan :: forall eff. String -> Int -> Eff eff Unit
 handleScan url 200 = pure unit
 handleScan url 201 = pure unit
 handleScan url _ = showQrcode url
 
-main :: Eff (console :: CONSOLE, wechaty :: WECHATY, db :: DB, periodic :: PERIODIC) Unit
+main :: Eff (console :: CONSOLE, wechaty :: WECHATY, db :: DB, periodic :: PERIODIC, now :: NOW) Unit
 main = do
   bot <- initWechaty
   client <- newClient (get "periodic") {max: 10}
