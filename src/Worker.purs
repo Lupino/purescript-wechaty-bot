@@ -5,36 +5,30 @@ module Worker
 import Prelude
 
 import Config (get)
-import Control.Monad.Aff (runAff_, Aff)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Exception (Error)
+import Control.Monad.Aff (Aff)
 import Control.Monad.Error.Class (try)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.Monad.Trans.Class (lift)
-import DB (Message(..), getMessage, DB, getSubscribeList, getRoomSubscribeList,
-           getGroup, Group (..))
+import DB (DB, Group(..), Message(..), getGroup, getMessage,
+           getRoomSubscribeList, getSubscribeList)
 import Data.Array ((!!), head, tail, null)
-import Data.Either (Either)
-import Data.Maybe (fromMaybe, fromJust, Maybe (..))
+import Data.Int (floor)
+import Data.Maybe (Maybe(..), fromJust, fromMaybe)
 import Data.String (Pattern(..), split)
 import Partial.Unsafe (unsafePartial)
-import Periodic.Worker (runWorker, addFunc, PERIODIC, work, name, done)
+import Periodic.Worker (PERIODIC, addFunc, done, name, runWorkerT, schedLater, work)
 import Wechaty.Contact (say, find)
 import Wechaty.Room as R
 import Wechaty.Types (WECHATY, runContactM, runRoomM)
 
 type TaskM eff = MaybeT (Aff (wechaty :: WECHATY, db :: DB | eff))
 
-doError :: forall eff a. Either Error a → Eff eff Unit
-doError _ = pure unit
-
-launchWorker :: forall eff. Eff (periodic :: PERIODIC, db :: DB, wechaty :: WECHATY | eff) Unit
+launchWorker :: forall eff. Aff (periodic :: PERIODIC, db :: DB, wechaty :: WECHATY | eff) Unit
 launchWorker = do
-  runWorker (get "periodic") $ do
+  runWorkerT (get "periodic") $ do
     addFunc "send-message" $ do
        n <- name
-       liftEff $ runAff_ doError $ void $ runMaybeT $ runTask n
+       void $ lift $ runMaybeT $ runTask n
        done
     work 10
 
