@@ -62,7 +62,7 @@ parseTimeString_ r n
   | startsWith n "s" = readNumber r + parseTimeString_ "" (drop 1 n)
   | startsWith n " " = parseTimeString_ r (drop 1 n)
   | null n = 0.0
-  | otherwise = parseTimeString_ r (drop 1 n)
+  | otherwise = parseTimeString_ (r <> take 1 n) (drop 1 n)
 
 parseTimeString :: String -> Number
 parseTimeString = parseTimeString_ ""
