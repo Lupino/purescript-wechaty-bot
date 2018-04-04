@@ -27,13 +27,13 @@ import Wechaty.Types (WECHATY)
 reCreateMsg :: Regex
 reCreateMsg = unsafePartial
   $ fromRight
-  $ regex "^(\\d+)-(\\d+)\\s*(\\d+)-(\\d+)\\s*(\\d+):(\\d+)" noFlags
+  $ regex "^(\\d+)-(\\d+)\\s+(\\d+)-(\\d+)\\s+(\\d+):(\\d+)" noFlags
 
 -- 1-1 10s 1h 内容
 reCreateDoLaterMsg :: Regex
 reCreateDoLaterMsg = unsafePartial
   $ fromRight
-  $ regex "^(\\d+)-(\\d+)\\s*([0-9dhms ]+)" noFlags
+  $ regex "^(\\d+)-(\\d+)\\s+([0-9dhms ]+)" noFlags
 
 
 reShowMsg :: Regex
