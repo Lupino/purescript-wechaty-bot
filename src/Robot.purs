@@ -6,8 +6,10 @@ module Robot
 
 import Prelude
 
+import Control.Monad.Eff.Now (NOW)
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
-import DB (DB, Message(..), message, setContent, setSchedAt, getMessageList, getMessage, deleteMessage, createMessage, setUser, updateMessage, subscribeMessage, unSubscribeMessage, roomSubscribeMessage, unRoomSubscribeMessage, Group(..), mkGroup, saveGroup, getGroup, setGroupRepeat)
+import Control.Monad.Eff.Class (liftEff)
+import DB (DB, Group(..), Message(..), createMessage, deleteMessage, getGroup, getMessage, getMessageList, message, mkGroup, roomSubscribeMessage, saveGroup, setContent, setGroupRepeat, setSchedAt, setUser, subscribeMessage, unRoomSubscribeMessage, unSubscribeMessage, updateMessage)
 import Data.Array ((!!), concat)
 import Data.Either (fromRight)
 import Data.Maybe (Maybe(..), fromJust, fromMaybe)
@@ -16,15 +18,23 @@ import Data.String.Regex (Regex, match, regex, test)
 import Data.String.Regex.Flags (noFlags)
 import Partial.Unsafe (unsafePartial)
 import Periodic.Client (Client, PERIODIC, submitJob, removeJob)
-import Utils (startsWith, momentFormat, convertSchedAt, parseTimeString, formatTimeString)
+import Utils (startsWith, momentFormat, convertSchedAt, parseTimeString, formatTimeString, getTimeStamp)
 import Wechaty.Contact (Contact, ContactT, contactName, say)
 import Wechaty.Room (sayTo, roomTopic, RoomT)
 import Wechaty.Types (WECHATY)
 
+-- 1-1 3-20 16:10 内容
 reCreateMsg :: Regex
 reCreateMsg = unsafePartial
   $ fromRight
   $ regex "^(\\d+)-(\\d+)\\s*(\\d+)-(\\d+)\\s*(\\d+):(\\d+)" noFlags
+
+-- 1-1 10s 1h 内容
+reCreateDoLaterMsg :: Regex
+reCreateDoLaterMsg = unsafePartial
+  $ fromRight
+  $ regex "^(\\d+)-(\\d+)\\s*([0-9dhms ]+)" noFlags
+
 
 reShowMsg :: Regex
 reShowMsg = unsafePartial
@@ -36,6 +46,7 @@ reNum = unsafePartial $ fromRight $ regex "^\\d+$" noFlags
 
 data Action =
     Msg Message
+  | LaterMsg Number Message
   | ShowGroup String
   | Sub String
   | UnSub String
@@ -58,6 +69,7 @@ parseMessage xs
   | startsWith xs "编辑场景" = parseSaveGroupAction $ trim $ drop 4 xs
   | startsWith xs "重复场景" = parseSetGroupRepeatAction $ trim $ drop 4 xs
   | test reCreateMsg xs = parseMsgAction xs
+  | test reCreateDoLaterMsg xs = parseDoLaterMsgAction xs
   | test reShowMsg xs = parseShowAction xs
   | otherwise = NoAction
 
@@ -103,6 +115,24 @@ parseMsgAction xs = unsafePartial $ fromMaybe NoAction go
             $ setContent content
             $ message group seq
 
+parseDoLaterMsgAction :: String -> Action
+parseDoLaterMsgAction xs = unsafePartial $ fromMaybe NoAction go
+  where go :: Maybe Action
+        go = do
+           m <- match reCreateDoLaterMsg xs
+
+           group  <- unsafePartial $ fromJust <$> m !! 1
+           seq    <- unsafePartial $ fromJust <$> m !! 2
+           later  <- unsafePartial $ fromJust <$> m !! 3
+           h      <- unsafePartial $ fromJust <$> m !! 0
+           let content = trim $ drop (length h) xs
+
+           pure
+            $ LaterMsg (parseTimeString later)
+            $ setContent content
+            $ message group seq
+
+
 parseShowAction :: String -> Action
 parseShowAction xs = unsafePartial $ fromMaybe NoAction go
   where go :: Maybe Action
@@ -118,7 +148,7 @@ subscriberHandler
 subscriberHandler xs = handleSubscriberAction (parseMessage xs)
 
 managerHandler
-  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY, periodic :: PERIODIC | eff) m
+  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY, periodic :: PERIODIC, now :: NOW | eff) m
   => Client -> String -> ContactT m Unit
 managerHandler client xs = handleManagerAction client (parseMessage xs)
 
@@ -136,7 +166,7 @@ roomSubscriberHandler contact manager xs =
              | otherwise = pure unit
 
 handleManagerAction
-  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY, periodic :: PERIODIC | eff) m
+  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY, periodic :: PERIODIC, now :: NOW | eff) m
   => Client -> Action -> ContactT m Unit
 handleManagerAction client (Msg (Message m)) = do
   m0 <- liftAff $ getMessage m.group m.seq
@@ -165,6 +195,10 @@ handleManagerAction client (Msg (Message m)) = do
                     , sched_at: m.sched_at
                     }
                   say $ "场景" <> m.group <> "脚本" <> m.seq <> " 修改成功"
+
+handleManagerAction client (LaterMsg later m) = do
+  now <- liftEff $ getTimeStamp
+  handleManagerAction client (Msg $ setSchedAt (now + later) m)
 
 handleManagerAction _ (SaveGroup (Group g)) = do
   n <- contactName

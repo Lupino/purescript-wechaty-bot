@@ -7,23 +7,21 @@ import Prelude
 import Config (get)
 import Control.Monad.Aff (Aff, launchAff_)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Now (now, NOW)
+import Control.Monad.Eff.Now (NOW)
 import Control.Monad.Error.Class (try)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Control.Monad.Trans.Class (lift)
 import DB (DB, Group(..), Message(..), getGroup, getMessage, getRoomSubscribeList, getSubscribeList, setSchedAt, updateMessage)
 import Data.Array ((!!), head, tail, null)
-import Data.DateTime.Instant (unInstant)
 import Data.Int (floor)
 import Data.Maybe (Maybe(..), fromJust, fromMaybe)
 import Data.String (Pattern(..), split)
-import Data.Time.Duration (Milliseconds(..))
-import Math as M
 import Partial.Unsafe (unsafePartial)
 import Periodic.Worker (PERIODIC, addFunc, done, name, runWorkerT, schedLater, work)
 import Wechaty.Contact (say, find, runContactT)
 import Wechaty.Room as R
 import Wechaty.Types (WECHATY)
+import Utils (getTimeStamp)
 
 type TaskM eff = MaybeT (Aff (wechaty :: WECHATY, db :: DB, now :: NOW | eff))
 
@@ -57,8 +55,8 @@ runTask xs = do
   loop (trySend $ sendRoomMessage h m) rList
 
   when (t > 0.0) $ do
-    (Milliseconds n) <- liftEff $ map unInstant now
-    lift $ updateMessage $ setSchedAt (M.floor (n / 1000.0) + t) m
+    n <- liftEff getTimeStamp
+    lift $ updateMessage $ setSchedAt (n + t) m
 
   pure t
 

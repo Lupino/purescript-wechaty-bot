@@ -4,10 +4,17 @@ module Utils
   , startsWith
   , convertSchedAt
   , momentFormat
+  , getTimeStamp
   ) where
 
 import Prelude
+
+import Control.Monad.Eff (Eff)
 import Data.String (null, take, drop)
+import Data.DateTime.Instant (unInstant)
+import Data.Time.Duration (Milliseconds(..))
+import Control.Monad.Eff.Now (now, NOW)
+import Math (floor)
 
 foreign import startsWith :: String -> String -> Boolean
 foreign import convertSchedAt :: forall a. a -> Number
@@ -28,3 +35,8 @@ parseTimeString_ r n
 
 parseTimeString :: String -> Number
 parseTimeString = parseTimeString_ ""
+
+getTimeStamp :: forall eff. Eff (now :: NOW | eff) Number
+getTimeStamp = do
+  (Milliseconds n) <- map unInstant now
+  pure $ floor (n / 1000.0)
