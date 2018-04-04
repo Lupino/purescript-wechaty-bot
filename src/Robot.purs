@@ -179,14 +179,14 @@ handleManagerAction client (Msg (Message m)) = do
         , name: m.group <> "-" <> m.seq
         , sched_at: m.sched_at
         }
-      say $ "场景" <> m.group <> "脚本" <> m.seq <> " 增加成功"
+      say $ "场景" <> m.group <> "计划" <> m.seq <> " 增加成功"
     Just _ -> if null m.content then do
                 liftAff $ deleteMessage m.group m.seq
                 liftAff $ removeJob client
                   { func: "send-message"
                   , name: m.group <> "-" <> m.seq
                   }
-                say $ "场景" <> m.group <> "脚本" <> m.seq <> " 删除成功"
+                say $ "场景" <> m.group <> "计划" <> m.seq <> " 删除成功"
                 else do
                   liftAff $ updateMessage (Message m)
                   liftAff $ submitJob client
@@ -194,7 +194,7 @@ handleManagerAction client (Msg (Message m)) = do
                     , name: m.group <> "-" <> m.seq
                     , sched_at: m.sched_at
                     }
-                  say $ "场景" <> m.group <> "脚本" <> m.seq <> " 修改成功"
+                  say $ "场景" <> m.group <> "计划" <> m.seq <> " 修改成功"
 
 handleManagerAction client (LaterMsg later m) = do
   now <- liftEff $ getTimeStamp
@@ -212,17 +212,17 @@ handleManagerAction _ (SetGroupRepeat g t) = do
 
 handleManagerAction _ Help = do
   say $ joinWith "\n" $ concat
-    [ [ "场景脚本操作"
+    [ [ "场景计划操作"
       , "输入：1-1 3-19 20:01 详细内容xxxxxx"
-      , "输出：场景1脚本1 增加成功"
-      , "（《1-1》是场景1的脚本1 ）"
+      , "输出：场景1计划1 增加成功"
+      , "（《1-1》是场景1的计划1 ）"
       , ""
       , "再次输入：1-1  3-19 20:01 详细内容xxxxxx"
-      , "输出：场景1脚本1 修改成功"
-      , "（详细内容为空，输出：场景1脚本1删除成功）"
+      , "输出：场景1计划1 修改成功"
+      , "（详细内容为空，输出：场景1计划1删除成功）"
       , ""
       , "输入：1-1 10s 详细内容xxxxxx"
-      , "输出：场景1脚本1 增加成功"
+      , "输出：场景1计划1 增加成功"
       , "（10s 为 10s 后执行，时间可以 d h m s）"
       , ""
       , "编辑场景"
@@ -254,15 +254,15 @@ handleSubscriberAction (ShowGroup group) = do
             Nothing -> ""
             Just (Group g') -> "场景: " <> g'.name <> "\n" <> "重复: " <> formatTimeString g'.repeat <> "\n"
 
-  say $ h <> "回复代码查看脚本:\n" <> joinWith "\n" mList
+  say $ h <> "回复代码查看计划:\n" <> joinWith "\n" mList
 
 handleSubscriberAction (Showp group seq) = do
   m <- liftAff $ getMessage group seq
   case m of
-    Nothing -> say $ "场景" <> group <> "脚本" <> seq <> " 不存在"
+    Nothing -> say $ "场景" <> group <> "计划" <> seq <> " 不存在"
     Just (Message m0) -> do
       say $ joinWith "\n"
-        [ "场景" <> group <> "脚本" <> seq <> ":"
+        [ "场景" <> group <> "计划" <> seq <> ":"
         , "时间: " <> momentFormat m0.sched_at "YYYY-MM-DD HH:mm:ss"
         , m0.content
         ]
@@ -296,11 +296,11 @@ showHelp :: Array String
 showHelp =
   [ "查看场景"
   , "输入 ：场景1"
-  , "输出：场景所包含的脚本"
+  , "输出：场景所包含的计划"
   , ""
-  , "查看脚本"
+  , "查看计划"
   , "输入：1-1"
-  , "输出：脚本8详细内容"
+  , "输出：计划8详细内容"
   , ""
   , "帮助"
   , "输入：帮助"
@@ -321,7 +321,7 @@ handleRoomSubscriberAction contact _ (ShowGroup group) = do
             Nothing -> ""
             Just (Group g') -> "场景: " <> g'.name <> "\n" <> "重复: " <> formatTimeString g'.repeat <> "\n"
 
-  sayTo contact $ "\n" <> h <> "回复代码查看脚本:\n" <> joinWith "\n" mList
+  sayTo contact $ "\n" <> h <> "回复代码查看计划:\n" <> joinWith "\n" mList
 
 handleRoomSubscriberAction contact true (Sub group) = do
   rid <- roomTopic
@@ -334,10 +334,10 @@ handleRoomSubscriberAction contact true (UnSub group) = do
 handleRoomSubscriberAction contact _ (Showp group seq) = do
   m <- liftAff $ getMessage group seq
   case m of
-    Nothing -> sayTo contact $ "场景" <> group <> "脚本" <> seq <> " 不存在"
+    Nothing -> sayTo contact $ "场景" <> group <> "计划" <> seq <> " 不存在"
     Just (Message m0) -> do
       sayTo contact $ joinWith "\n"
-        [ "场景" <> group <> "脚本" <> seq <> ":"
+        [ "场景" <> group <> "计划" <> seq <> ":"
         , "时间: " <> momentFormat m0.sched_at "YYYY-MM-DD HH:mm:ss"
         , m0.content
         ]
