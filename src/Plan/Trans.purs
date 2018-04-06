@@ -130,7 +130,7 @@ initRouteRef :: forall r m a. Eff (ref :: REF | r) (RouteRef m a)
 initRouteRef = map RouteRef $ newRef []
 
 addRoute :: forall r m a. RouteRef m a -> Route m a -> Eff (ref :: REF | r) Unit
-addRoute (RouteRef ref) x = modifyRef ref $ \xs -> x:xs
+addRoute (RouteRef ref) x = modifyRef ref $ \xs -> concat [xs, [x]]
 
 routes :: forall r m a. RouteRef m a -> Eff (ref :: REF | r) (Array (Route m a))
 routes (RouteRef ref) = readRef ref
