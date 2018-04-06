@@ -6,6 +6,7 @@ module Plan.Trans
   , Pattern (..)
   , regexPattern
   , regexPattern_
+  , paramPattern
   , RouteRef
   , initRouteRef
   , PlanT
@@ -23,14 +24,15 @@ import Control.Monad.Eff.Ref (REF, Ref, newRef, readRef, modifyRef)
 import Data.Maybe (Maybe (..))
 import Data.Either (Either (..), fromRight)
 import Data.Newtype (class Newtype)
-import Data.Array (head, tail, (:), mapWithIndex, catMaybes)
+import Data.Array (head, tail, mapWithIndex, catMaybes, zipWith, concat)
 import Control.Monad.Eff.Exception (Error, error)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff (Eff)
 import Partial.Unsafe (unsafePartial)
-import Data.String.Regex (Regex, match, regex)
-import Data.String.Regex.Flags (noFlags)
+import Data.String.Regex (Regex, match, regex, replace)
+import Data.String.Regex.Flags (noFlags, global)
+import Data.String (takeWhile, drop)
 
 data Param = Param String String
 
@@ -101,6 +103,23 @@ regexPattern_ reg = Pattern go
 
 regexPattern :: String -> Pattern
 regexPattern = unsafePartial $ fromRight <<< map regexPattern_ <<< flip regex noFlags
+
+reSpecParam :: Regex
+reSpecParam = unsafePartial $ fromRight $ regex ":[^:]+:" global
+
+paramPattern :: String -> Pattern
+paramPattern xs = Pattern go
+  where reg = unsafePartial $ fromRight $ regex ("^" <> replace reSpecParam "(.+)" xs <> "$") noFlags
+        keys = catMaybes <$> match reSpecParam xs
+
+        go :: String -> Maybe (Array Param)
+        go ys = do
+          vs <- catMaybes <$> match reg ys
+          ks <- keys
+          vs' <- tail vs
+          pure $ zipWith toParam ks vs'
+          where toParam :: String -> String -> Param
+                toParam k v = Param (takeWhile (_ /= ':') $ drop 1 k) v
 
 data Route m a = Route Pattern (ActionT m a)
 
