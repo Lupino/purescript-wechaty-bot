@@ -11,7 +11,7 @@ import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import DB (DB, Group(..), Message(..), createMessage, deleteMessage, getGroup, getMessage, getMessageList, message, mkGroup, roomSubscribeMessage, saveGroup, setContent, setGroupRepeat, setSchedAt, setUser, subscribeMessage, unRoomSubscribeMessage, unSubscribeMessage, updateMessage)
 import Data.Array ((!!), concat)
-import Data.Either (fromRight)
+import Data.Either (fromRight, Either(..))
 import Data.Maybe (Maybe(..), fromJust, fromMaybe)
 import Data.String (trim, drop, length, null, joinWith, dropWhile, takeWhile)
 import Data.String.Regex (Regex, match, regex, test)
@@ -22,6 +22,9 @@ import Utils (startsWith, momentFormat, convertSchedAt, parseTimeString, formatT
 import Wechaty.Contact (Contact, ContactT, contactName, say)
 import Wechaty.Room (sayTo, roomTopic, RoomT)
 import Wechaty.Types (WECHATY)
+import Plan.Trans (PlanT, reply)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Eff.Ref (REF)
 
 -- 1-1 3-20 16:10 内容
 reCreateMsg :: Regex
@@ -54,6 +57,7 @@ data Action =
   | SaveGroup Group
   | SetGroupRepeat String Number
   | Help
+  | Plan String
   | NoAction
 
 parseMessage :: String -> Action
@@ -71,7 +75,7 @@ parseMessage xs
   | test reCreateMsg xs = parseMsgAction xs
   | test reCreateDoLaterMsg xs = parseDoLaterMsgAction xs
   | test reShowMsg xs = parseShowAction xs
-  | otherwise = NoAction
+  | otherwise = Plan xs
 
 parseNumAction ::  (String -> Action) -> String -> Action
 parseNumAction f xs
@@ -142,23 +146,27 @@ parseShowAction xs = unsafePartial $ fromMaybe NoAction go
            seq   <- unsafePartial $ fromJust <$> m !! 2
            pure $ Showp group seq
 
+type ContactHandler m = ContactT (PlanT String m)
+
+type RoomHandler m = RoomT (PlanT String m)
+
 subscriberHandler
-  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY | eff) m
-  => String -> ContactT m Unit
+  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY, ref :: REF | eff) m
+  => String -> ContactHandler m Unit
 subscriberHandler xs = handleSubscriberAction (parseMessage xs)
 
 managerHandler
-  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY, periodic :: PERIODIC, now :: NOW | eff) m
-  => Client -> String -> ContactT m Unit
+  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY, periodic :: PERIODIC, now :: NOW, ref :: REF | eff) m
+  => Client -> String -> ContactHandler m Unit
 managerHandler client xs = handleManagerAction client (parseMessage xs)
 
 roomSubscriberHandler
-  :: forall m0 eff. MonadAff (db :: DB, wechaty :: WECHATY, periodic :: PERIODIC | eff) m0
-  => Contact -> Boolean -> String -> RoomT m0 Unit
+  :: forall m0 eff. MonadAff (db :: DB, wechaty :: WECHATY, periodic :: PERIODIC, ref :: REF | eff) m0
+  => Contact -> Boolean -> String -> RoomHandler m0 Unit
 roomSubscriberHandler contact manager xs =
   go $ \m -> handleRoomSubscriberAction contact manager (parseMessage m)
 
-  where go :: forall m. Applicative m => (String -> RoomT m Unit) -> RoomT m Unit
+  where go :: forall m. Monad m => (String -> RoomHandler m Unit) -> RoomHandler m Unit
         go f | startsWith xs "@小云" = f $ trim $ drop 3 xs
              | startsWith xs "@机器人" = f $ trim $ drop 4 xs
              | startsWith xs "@robot" = f $ trim $ drop 6 xs
@@ -166,8 +174,8 @@ roomSubscriberHandler contact manager xs =
              | otherwise = pure unit
 
 handleManagerAction
-  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY, periodic :: PERIODIC, now :: NOW | eff) m
-  => Client -> Action -> ContactT m Unit
+  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY, periodic :: PERIODIC, now :: NOW, ref :: REF | eff) m
+  => Client -> Action -> ContactHandler m Unit
 handleManagerAction client (Msg (Message m)) = do
   m0 <- liftAff $ getMessage m.group m.seq
   uid <- contactName
@@ -241,8 +249,8 @@ handleManagerAction _ Help = do
 handleManagerAction _ act = handleSubscriberAction act
 
 handleSubscriberAction
-  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY | eff) m
-  => Action -> ContactT m Unit
+  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY, ref :: REF | eff) m
+  => Action -> ContactHandler m Unit
 handleSubscriberAction (ShowGroup group) = do
   mList <- liftAff
     $ map (\(Message m) -> m.group <> "-" <> m.seq)
@@ -279,6 +287,13 @@ handleSubscriberAction (UnSub group) = do
 
 handleSubscriberAction Help =
   say $ joinWith "\n" $ concat [showHelp, subscriberHelp]
+
+handleSubscriberAction (Plan xs) = do
+  ret <- lift $ reply xs
+  case ret of
+    Left _ -> pure unit
+    Right m -> say m
+
 handleSubscriberAction _ = pure unit
 
 subscriberHelp :: Array String
@@ -308,8 +323,8 @@ showHelp =
   ]
 
 handleRoomSubscriberAction
-  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY | eff) m
-  => Contact -> Boolean -> Action -> RoomT m Unit
+  :: forall m eff. MonadAff (db :: DB, wechaty :: WECHATY, ref :: REF | eff) m
+  => Contact -> Boolean -> Action -> RoomHandler m Unit
 handleRoomSubscriberAction contact _ (ShowGroup group) = do
   mList <- liftAff
     $ map (\(Message m) -> m.group <> "-" <> m.seq)
@@ -345,5 +360,11 @@ handleRoomSubscriberAction contact true Help =
   sayTo contact $ joinWith "\n" $ concat [showHelp, subscriberHelp]
 handleRoomSubscriberAction contact false Help =
   sayTo contact $ joinWith "\n" showHelp
+
+handleRoomSubscriberAction contact _ (Plan xs) = do
+  ret <- lift $ reply xs
+  case ret of
+    Left _ -> pure unit
+    Right m -> sayTo contact m
 
 handleRoomSubscriberAction contact manager _ = pure unit
