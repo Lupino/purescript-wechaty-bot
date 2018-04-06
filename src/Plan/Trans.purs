@@ -4,6 +4,8 @@ module Plan.Trans
   , params
   , param
   , Pattern (..)
+  , regexPattern
+  , regexPattern_
   , RouteRef
   , initRouteRef
   , PlanT
@@ -19,13 +21,16 @@ import Control.Monad.Except.Trans (ExceptT, runExceptT, except)
 import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Control.Monad.Eff.Ref (REF, Ref, newRef, readRef, modifyRef)
 import Data.Maybe (Maybe (..))
-import Data.Either (Either (..))
+import Data.Either (Either (..), fromRight)
 import Data.Newtype (class Newtype)
-import Data.Array (head, tail, (:))
+import Data.Array (head, tail, (:), mapWithIndex, catMaybes)
 import Control.Monad.Eff.Exception (Error, error)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff (Eff)
+import Partial.Unsafe (unsafePartial)
+import Data.String.Regex (Regex, match, regex)
+import Data.String.Regex.Flags (noFlags)
 
 data Param = Param String String
 
@@ -84,6 +89,18 @@ param k = ActionT $ do
 newtype Pattern = Pattern (String -> Maybe (Array Param))
 
 derive instance newtypePattern :: Newtype Pattern _
+
+regexPattern_ :: Regex -> Pattern
+regexPattern_ reg = Pattern go
+  where go :: String -> Maybe (Array Param)
+        go xs = do
+          m <- match reg xs
+          pure $ mapWithIndex toParam $ catMaybes m
+          where toParam :: Int -> String -> Param
+                toParam idx v = Param (show idx) v
+
+regexPattern :: String -> Pattern
+regexPattern = unsafePartial $ fromRight <<< map regexPattern_ <<< flip regex noFlags
 
 data Route m a = Route Pattern (ActionT m a)
 
