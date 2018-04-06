@@ -19,6 +19,7 @@ import Wechaty.Types (WECHATY)
 import Control.Monad.Eff.Ref (REF)
 import Plan.Trans (runPlanT, initRouteRef)
 import Worker (launchWorker)
+import Chatter (launchChatter)
 
 handleScan :: forall eff. String -> Int -> Eff eff Unit
 handleScan url 200 = pure unit
@@ -32,6 +33,7 @@ main = do
   routeRef <- initRouteRef
   launchAff_ $ do
     runPlanT routeRef $ do
+      launchChatter
       runWechatyT (launchAff_ <<< runPlanT routeRef) bot $ do
         onScan $ \url code -> do
           handleScan url code
