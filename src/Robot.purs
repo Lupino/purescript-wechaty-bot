@@ -10,9 +10,9 @@ import Control.Monad.Eff.Now (NOW)
 import Control.Monad.Aff.Class (class MonadAff, liftAff)
 import Control.Monad.Eff.Class (liftEff)
 import DB (DB, Group(..), Message(..), createMessage, deleteMessage, getGroup, getMessage, getMessageList, message, mkGroup, roomSubscribeMessage, saveGroup, setContent, setGroupRepeat, setSchedAt, setUser, subscribeMessage, unRoomSubscribeMessage, unSubscribeMessage, updateMessage)
-import Data.Array ((!!), concat)
+import Data.Array ((!!), concat, catMaybes)
 import Data.Either (fromRight, Either(..))
-import Data.Maybe (Maybe(..), fromJust, fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (trim, drop, length, null, joinWith, dropWhile, takeWhile)
 import Data.String.Regex (Regex, match, regex, test)
 import Data.String.Regex.Flags (noFlags)
@@ -98,14 +98,14 @@ parseMsgAction :: String -> Action
 parseMsgAction xs = unsafePartial $ fromMaybe NoAction go
   where go :: Maybe Action
         go = do
-           m <- match reCreateMsg xs
-           group  <- unsafePartial $ fromJust <$> m !! 1
-           seq    <- unsafePartial $ fromJust <$> m !! 2
-           month  <- unsafePartial $ fromJust <$> m !! 3
-           date   <- unsafePartial $ fromJust <$> m !! 4
-           hour   <- unsafePartial $ fromJust <$> m !! 5
-           minute <- unsafePartial $ fromJust <$> m !! 6
-           h      <- unsafePartial $ fromJust <$> m !! 0
+           m <- catMaybes <$> match reCreateMsg xs
+           group  <- m !! 1
+           seq    <- m !! 2
+           month  <- m !! 3
+           date   <- m !! 4
+           hour   <- m !! 5
+           minute <- m !! 6
+           h      <- m !! 0
            let content = trim $ drop (length h) xs
 
            pure
@@ -123,12 +123,12 @@ parseDoLaterMsgAction :: String -> Action
 parseDoLaterMsgAction xs = unsafePartial $ fromMaybe NoAction go
   where go :: Maybe Action
         go = do
-           m <- match reCreateDoLaterMsg xs
+           m <- catMaybes <$> match reCreateDoLaterMsg xs
 
-           group  <- unsafePartial $ fromJust <$> m !! 1
-           seq    <- unsafePartial $ fromJust <$> m !! 2
-           later  <- unsafePartial $ fromJust <$> m !! 3
-           h      <- unsafePartial $ fromJust <$> m !! 0
+           group  <- m !! 1
+           seq    <- m !! 2
+           later  <- m !! 3
+           h      <- m !! 0
            let content = trim $ drop (length h) xs
 
            pure
@@ -141,9 +141,9 @@ parseShowAction :: String -> Action
 parseShowAction xs = unsafePartial $ fromMaybe NoAction go
   where go :: Maybe Action
         go = do
-           m <- match reShowMsg xs
-           group <- unsafePartial $ fromJust <$> m !! 1
-           seq   <- unsafePartial $ fromJust <$> m !! 2
+           m <- catMaybes <$> match reShowMsg xs
+           group <- m !! 1
+           seq   <- m !! 2
            pure $ Showp group seq
 
 type ContactHandler m = ContactT (PlanT String m)
