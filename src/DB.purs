@@ -14,6 +14,8 @@ module DB
   , message
   , setContent
   , setSchedAt
+  , getContent
+  , getSchedAt
 
   , createMessage
   , updateMessage
@@ -130,8 +132,14 @@ message group seq = Message
 setContent :: String -> Message -> Message
 setContent content (Message m) = Message (m {content = content})
 
+getContent :: Message -> String
+getContent (Message m) = m.content
+
 setSchedAt :: Number -> Message -> Message
 setSchedAt schedat (Message m) = Message (m {sched_at = schedat})
+
+getSchedAt :: Message -> Number
+getSchedAt (Message m) = m.sched_at
 
 exceptToMaybe :: forall a. F a -> Maybe a
 exceptToMaybe a = case runExcept a of
