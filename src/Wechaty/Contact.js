@@ -33,3 +33,8 @@ exports._say = function(contact, obj) {
 exports.getContactName = function(contact) {
   return contact.name();
 }
+
+exports.self = function() {
+  var bot = Wechaty.instance();
+  return bot.self();
+}

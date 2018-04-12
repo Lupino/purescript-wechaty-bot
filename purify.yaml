@@ -21,6 +21,10 @@ extra-deps:
   - purescript-foreign
   repo: https://github.com/nwolverson/purescript-aff-promise
   commit: bee038b89e300f23ffb2075c4f5419a2891ea225
+- name: purescript-arraybuffer-types
+  deps: []
+  repo: https://github.com/purescript-contrib/purescript-arraybuffer-types
+  commit: 505aa3de50a1400e5f2fce4a8e7b1a39abaa8fd9
 - name: purescript-arrays
   deps:
   - purescript-unfoldable
@@ -229,6 +233,15 @@ extra-deps:
   - purescript-prelude
   repo: https://github.com/purescript/purescript-invariant
   commit: 61b5c749483e50e10bb75df83a9e36331630e895
+- name: purescript-js-date
+  deps:
+  - purescript-exceptions
+  - purescript-now
+  - purescript-integers
+  - purescript-foreign
+  - purescript-datetime
+  repo: https://github.com/purescript-contrib/purescript-js-date
+  commit: 8dea07e79d08246a3c5936d519c299d76da78712
 - name: purescript-lazy
   deps:
   - purescript-monoid
@@ -274,6 +287,62 @@ extra-deps:
   - purescript-prelude
   repo: https://github.com/purescript/purescript-newtype
   commit: 5f0557944afe85e3e830be9a8df43522311326e8
+- name: purescript-node-buffer
+  deps:
+  - purescript-arraybuffer-types
+  - purescript-maybe
+  - purescript-eff
+  repo: https://github.com/purescript-node/purescript-node-buffer
+  commit: ef44e278ec31b48115aa8133cb26a0dbae0d09e2
+- name: purescript-node-fs
+  deps:
+  - purescript-exceptions
+  - purescript-node-streams
+  - purescript-node-path
+  - purescript-unsafe-coerce
+  - purescript-node-buffer
+  - purescript-globals
+  - purescript-js-date
+  - purescript-foreign
+  - purescript-nullable
+  - purescript-datetime
+  repo: https://github.com/purescript-node/purescript-node-fs
+  commit: 7712ddc7bc86b79ab41d1db135c11edc63e34f39
+- name: purescript-node-path
+  deps: []
+  repo: https://github.com/purescript-node/purescript-node-path
+  commit: 73fb16d0734d44307861dc24ede5a4711062d508
+- name: purescript-node-process
+  deps:
+  - purescript-exceptions
+  - purescript-maps
+  - purescript-console
+  - purescript-node-streams
+  - purescript-maybe
+  - purescript-unsafe-coerce
+  - purescript-node-fs
+  - purescript-posix-types
+  - purescript-partial
+  repo: https://github.com/purescript-node/purescript-node-process
+  commit: 11f78ae7b40d351bc93a08568a23caaae574ba60
+- name: purescript-node-readline
+  deps:
+  - purescript-console
+  - purescript-node-streams
+  - purescript-node-process
+  - purescript-options
+  - purescript-foreign
+  repo: https://github.com/purescript-node/purescript-node-readline
+  commit: 2a4628cfdae68aac0fa205e56904b1aa671e165a
+- name: purescript-node-streams
+  deps:
+  - purescript-exceptions
+  - purescript-either
+  - purescript-prelude
+  - purescript-eff
+  - purescript-node-buffer
+  repo: https://github.com/purescript-node/purescript-node-streams
+  commit: 5544cc893a403cc6f14a0efeace3c3209bcad938
 - name: purescript-nonempty
   deps:
   - purescript-foldable-traversable
@@ -292,6 +361,16 @@ extra-deps:
   - purescript-functions
   repo: https://github.com/paf31/purescript-nullable
   commit: 012aca713e0d89a5c188e474fd03e058798e5900
+- name: purescript-options
+  deps:
+  - purescript-maps
+  - purescript-maybe
+  - purescript-monoid
+  - purescript-contravariant
+  - purescript-tuples
+  - purescript-foreign
+  repo: https://github.com/ethul/purescript-options
+  commit: 995faed621bf0cfda6eea25b29ff2a6e541ffa3c
 - name: purescript-parallel
   deps:
   - purescript-foldable-traversable
@@ -304,6 +383,12 @@ extra-deps:
   deps: []
   repo: https://github.com/purescript/purescript-partial
   commit: 4ede691a8cfe3a2166095fafc377e6f45dc0d911
+- name: purescript-posix-types
+  deps:
+  - purescript-maybe
+  - purescript-prelude
+  repo: https://github.com/purescript-node/purescript-posix-types
+  commit: cd1f225840755b6da4fe0f4b9083280b1fa1087d
 - name: purescript-prelude
   deps: []
   repo: https://github.com/purescript/purescript-prelude

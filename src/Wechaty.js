@@ -43,7 +43,9 @@ exports._onLogin = function(bot, callback) {
 exports._onMessage = function(bot, callback) {
   return function() {
     bot.on('message', function(message) {
-      return callback(message)();
+      if (message.type() === 1) {
+        return callback(message)();
+      }
     });
   }
 }

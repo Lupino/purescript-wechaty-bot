@@ -6,6 +6,7 @@ module Wechaty.Contact
   , say
   , getContactName
   , contactName
+  , self
   , module Wechaty.Types
   ) where
 
@@ -53,3 +54,5 @@ contactName
 contactName = getContactName <$> ask
 
 foreign import getContactName :: Contact -> String
+
+foreign import self :: forall eff. Eff (wechaty :: WECHATY | eff) Contact
