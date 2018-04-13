@@ -12,7 +12,9 @@ exports._sayTo = function(msg, replyTo, obj) {
 
 exports._getContent = function(msg) {
   return function() {
-    return msg.content();
+    var content = msg.content();
+    content = content.replace(/<br[^>]*>/ig, "\n");
+    return content;
   }
 }
 
