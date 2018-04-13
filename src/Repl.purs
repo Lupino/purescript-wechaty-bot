@@ -151,7 +151,7 @@ handlers (FindContact n) = do
       (Left e) -> log $ "Error: " <> message e
       (Right []) -> log $ "Contact<<" <> n <> ">> Not Found."
       (Right [c]) -> runRepl ref $ switchContact c
-      (Right xs) ->  log $ "Find Contact:\n" <> (joinWith "\n" $ map getContactName xs)
+      (Right xs) ->  log $ "Found Contact:\n" <> (joinWith "\n" $ map getContactName xs)
     showPrompt ps
 handlers (FindRoom n) = do
   ref <- ask
@@ -161,7 +161,7 @@ handlers (FindRoom n) = do
       (Left e) -> log $ "Error: " <> message e
       (Right []) ->  log $ "Room<<" <> n <> ">> Not Found."
       (Right [c]) -> runRepl ref $ switchRoom c
-      (Right xs) ->  log $ "Find Room:\n" <> (joinWith "\n" $ map getRoomTopic xs)
+      (Right xs) ->  log $ "Found Room:\n" <> (joinWith "\n" $ map getRoomTopic xs)
     showPrompt ps
 
 handlers (Msg m) = do
