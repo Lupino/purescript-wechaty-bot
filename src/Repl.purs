@@ -130,7 +130,6 @@ hits :: Array String
 hits =
   [ ".contact"
   , ".room"
-  , ".whitelist"
   , ".whitelist add"
   , ".whitelist remove"
   , ".whitelist clear"
