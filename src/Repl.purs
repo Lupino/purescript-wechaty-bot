@@ -1,4 +1,4 @@
-module Repl (launchRepl, ReplState, initReplState, checkWhitelist) where
+module Repl (launchRepl, ReplState, initReplState, checkWhitelist, stdoutWrite) where
 
 import Prelude
 
@@ -20,6 +20,9 @@ import Control.Monad.Eff.Ref (REF, Ref, newRef, readRef, modifyRef)
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
 import Data.Array (elem, (:), delete)
 import Data.Array (null) as A
+import Node.Stream (writeString)
+import Node.Process (stdout)
+import Node.Encoding (Encoding(UTF8))
 
 type Whitelist = Array String
 
@@ -204,3 +207,6 @@ checkWhitelist ref h io = do
   wl <- getWhitelist <$> readRef ref
   if A.null wl then io
     else if elem h wl then io else pure unit
+
+stdoutWrite :: forall eff. String -> Eff (console :: CONSOLE, exception :: EXCEPTION | eff) Unit
+stdoutWrite xs = void $ writeString stdout UTF8 xs (pure unit)

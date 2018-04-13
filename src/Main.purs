@@ -22,7 +22,7 @@ import Plan.Trans (runPlanT, initRouteRef)
 import Worker (launchWorker)
 import Chatter (launchChatter)
 import Node.ReadLine (READLINE)
-import Repl (launchRepl, initReplState, checkWhitelist)
+import Repl (launchRepl, initReplState, checkWhitelist, stdoutWrite)
 import Control.Monad.Eff.Exception (EXCEPTION)
 
 handleScan :: forall eff. String -> Int -> Eff eff Unit
@@ -57,10 +57,10 @@ main = do
             Nothing ->
               if s then handleContact $ managerHandler client
                    else do
-                      liftEff $ checkWhitelist ps (getContactName c) $ log $ "\nContact<<" <> getContactName c <> ">>: " <> msg
+                      liftEff $ checkWhitelist ps (getContactName c) $ stdoutWrite $ "\nContact<<" <> getContactName c <> ">>: " <> msg
                       handleContact $ subscriberHandler
             Just r0 -> do
-              liftEff $ checkWhitelist ps (getRoomTopic r0) $ log $ "\nRoom<<" <> getRoomTopic r0 <> ">><<" <> getContactName c <> ">>: " <> msg
+              liftEff $ checkWhitelist ps (getRoomTopic r0) $ stdoutWrite $ "\nRoom<<" <> getRoomTopic r0 <> ">><<" <> getContactName c <> ">>: " <> msg
               handleRoom r0 s $ roomSubscriberHandler
 
         start
