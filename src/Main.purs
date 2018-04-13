@@ -57,14 +57,14 @@ main = do
             Nothing -> do
               liftEff
                 $ checkWhitelist ps (getContactName c)
-                $ stdoutWrite $ "\nContact<<" <> getContactName c <> ">>: " <> msg
+                $ stdoutWrite $ "\nFrom<<" <> getContactName c <> ">>:\n" <> msg
               if s then handleContact $ managerHandler client
                    else handleContact $ subscriberHandler
             Just r0 -> do
               unless s
                 $ liftEff
                 $ checkWhitelist ps (getRoomTopic r0)
-                $ stdoutWrite $ "\nRoom<<" <> getRoomTopic r0 <> ">><<" <> getContactName c <> ">>: " <> msg
+                $ stdoutWrite $ "\nRoom<<" <> getRoomTopic r0 <> ">><<" <> getContactName c <> ">>:\n" <> msg
               handleRoom r0 s $ roomSubscriberHandler
 
         start
