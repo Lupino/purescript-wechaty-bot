@@ -61,10 +61,8 @@ main = do
                       liftEff $ log $ "\nContact<<" <> getContactName c <> ">>: " <> msg
                       handleContact $ subscriberHandler
             Just r0 -> do
-              liftEff $ log $ "\nRoom<<" <> getRoomTopic r0 <> ">>Contact<<" <> getContactName c <> ">>: " <> msg
+              liftEff $ log $ "\nRoom<<" <> getRoomTopic r0 <> ">><<" <> getContactName c <> ">>: " <> msg
               handleRoom r0 s $ roomSubscriberHandler
-
-          liftEff $ showPrompt ps
 
         start
         onError $ \msg -> log $ "error: " <> msg
