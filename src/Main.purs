@@ -54,13 +54,17 @@ main = do
           c <- from
           msg <- content
           case r of
-            Nothing ->
+            Nothing -> do
+              liftEff
+                $ checkWhitelist ps (getContactName c)
+                $ stdoutWrite $ "\nContact<<" <> getContactName c <> ">>: " <> msg
               if s then handleContact $ managerHandler client
-                   else do
-                      liftEff $ checkWhitelist ps (getContactName c) $ stdoutWrite $ "\nContact<<" <> getContactName c <> ">>: " <> msg
-                      handleContact $ subscriberHandler
+                   else handleContact $ subscriberHandler
             Just r0 -> do
-              liftEff $ checkWhitelist ps (getRoomTopic r0) $ stdoutWrite $ "\nRoom<<" <> getRoomTopic r0 <> ">><<" <> getContactName c <> ">>: " <> msg
+              unless s
+                $ liftEff
+                $ checkWhitelist ps (getRoomTopic r0)
+                $ stdoutWrite $ "\nRoom<<" <> getRoomTopic r0 <> ">><<" <> getContactName c <> ">>: " <> msg
               handleRoom r0 s $ roomSubscriberHandler
 
         start
