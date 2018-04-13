@@ -7,6 +7,7 @@ module Wechaty.Contact
   , getContactName
   , contactName
   , self
+  , findAll
   , module Wechaty.Types
   ) where
 
@@ -35,6 +36,12 @@ foreign import _find :: forall eff. String
 
 find :: forall eff. String -> Aff eff (Maybe Contact)
 find n = liftEff (_find n Just Nothing) >>= toAff
+
+foreign import _findAll :: forall eff. String -> Eff eff (Promise (Array Contact))
+
+findAll :: forall eff. String -> Aff eff (Array Contact)
+findAll n = liftEff (_findAll n) >>= toAff
+
 
 foreign import _say :: forall a eff. Fn2 Contact a (Eff eff (Promise Unit))
 

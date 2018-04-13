@@ -7,6 +7,7 @@ module Wechaty.Room
   , sayTo
   , getRoomTopic
   , roomTopic
+  , findAll
   , module Wechaty.Types
   ) where
 
@@ -36,6 +37,11 @@ foreign import _find :: forall eff. String
 
 find :: forall eff. String -> Aff eff (Maybe Room)
 find n = liftEff (_find n Just Nothing) >>= toAff
+
+foreign import _findAll :: forall eff. String -> Eff eff (Promise (Array Room))
+
+findAll :: forall eff. String -> Aff eff (Array Room)
+findAll n = liftEff (_findAll n) >>= toAff
 
 foreign import _say :: forall a eff. Fn2 Room a (Eff eff (Promise Unit))
 

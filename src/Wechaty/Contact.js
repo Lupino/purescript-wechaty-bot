@@ -24,6 +24,22 @@ exports._find = function(name) {
   }
 }
 
+exports._findAll = function(name) {
+  return function() {
+    return Contact.findAll({name: new RegExp(name)})
+      .then(function(c) {
+        if (c.length === 0) {
+          var bot = Wechaty.instance();
+          var user = bot.self();
+          if (user.name() === name) {
+            return [user];
+          }
+        }
+        return c;
+      })
+  }
+}
+
 exports._say = function(contact, obj) {
   return function () {
     return contact.say(obj);

@@ -18,6 +18,12 @@ exports._find = function(topic) {
   }
 }
 
+exports._findAll = function(topic) {
+  return function() {
+    return Room.findAll({topic: new RegExp(topic)});
+  }
+}
+
 exports._say = function(room, obj) {
   return function() {
     return room.say(obj);

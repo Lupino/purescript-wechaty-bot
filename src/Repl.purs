@@ -7,12 +7,11 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (log, CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION, message)
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
 import Data.String (trim, drop, length, null, joinWith)
 import Node.ReadLine (Interface, READLINE, createConsoleInterface, noCompletion, setPrompt, setLineHandler, prompt)
 import Utils (startsWith)
-import Wechaty.Contact (find, getContactName, runContactT, say, Contact, self)
-import Wechaty.Room (find, say) as R
+import Wechaty.Contact (findAll, getContactName, runContactT, say, Contact, self)
+import Wechaty.Room (findAll, say) as R
 import Wechaty.Room (Room, getRoomTopic, runRoomT)
 import Wechaty.Types (WECHATY)
 import Control.Monad.Trans.Class (lift)
@@ -147,20 +146,22 @@ handlers :: forall eff. Cmd -> Repl eff Unit
 handlers (FindContact n) = do
   ref <- ask
   ps <- get
-  lift $ flip runAff_ (find n) $ \r -> do
+  lift $ flip runAff_ (findAll n) $ \r -> do
     case r of
       (Left e) -> log $ "Error: " <> message e
-      (Right (Just c)) -> runRepl ref $ switchContact c
-      (Right Nothing) ->  log $ "Contact<<" <> n <> ">> Not Found."
+      (Right []) -> log $ "Contact<<" <> n <> ">> Not Found."
+      (Right [c]) -> runRepl ref $ switchContact c
+      (Right xs) ->  log $ "Find Contact:\n" <> (joinWith "\n" $ map getContactName xs)
     showPrompt ps
 handlers (FindRoom n) = do
   ref <- ask
   ps <- get
-  lift $ flip runAff_ (R.find n) $ \r -> do
+  lift $ flip runAff_ (R.findAll n) $ \r -> do
     case r of
       (Left e) -> log $ "Error: " <> message e
-      (Right (Just c)) -> runRepl ref $ switchRoom c
-      (Right Nothing) ->  log $ "Room<<" <> n <> ">> Not Found."
+      (Right []) ->  log $ "Room<<" <> n <> ">> Not Found."
+      (Right [c]) -> runRepl ref $ switchRoom c
+      (Right xs) ->  log $ "Find Room:\n" <> (joinWith "\n" $ map getRoomTopic xs)
     showPrompt ps
 
 handlers (Msg m) = do
