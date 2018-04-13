@@ -8,7 +8,7 @@ import Control.Monad.Eff.Console (log, CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION, message)
 import Data.Either (Either(..))
 import Data.String (trim, drop, length, null, joinWith)
-import Node.ReadLine (Interface, READLINE, createConsoleInterface, noCompletion, setPrompt, setLineHandler, prompt)
+import Node.ReadLine (Interface, READLINE, createConsoleInterface, setPrompt, setLineHandler, prompt, Completer)
 import Utils (startsWith)
 import Wechaty.Contact (findAll, getContactName, runContactT, say, Contact, self)
 import Wechaty.Room (findAll, say) as R
@@ -17,7 +17,7 @@ import Wechaty.Types (WECHATY)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Eff.Ref (REF, Ref, newRef, readRef, modifyRef)
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
-import Data.Array (elem, (:), delete)
+import Data.Array (elem, (:), delete, filter)
 import Data.Array (null) as A
 import Node.Stream (writeString)
 import Node.Process (stdout)
@@ -34,7 +34,7 @@ runRepl s m = runReaderT m s
 
 initReplState :: forall eff. Eff (ref :: REF, readline :: READLINE, console :: CONSOLE, exception :: EXCEPTION, wechaty :: WECHATY | eff) (Ref ReplState)
 initReplState = do
-  rl <- createConsoleInterface noCompletion
+  rl <- createConsoleInterface completion
   newRef $ Only [] rl
 
 get :: forall eff. Repl eff ReplState
@@ -125,6 +125,21 @@ parseCmd xs
   | startsWith xs ".help" = Help
   | null xs = Empty
   | otherwise = Msg xs
+
+hits :: Array String
+hits =
+  [ ".contact"
+  , ".room"
+  , ".whitelist"
+  , ".whitelist add"
+  , ".whitelist remove"
+  , ".whitelist clear"
+  , ".exit"
+  , ".help"
+  ]
+
+completion :: forall eff. Completer eff
+completion s = pure { completions: filter (flip startsWith s) hits, matched: s }
 
 help :: Array String
 help =
