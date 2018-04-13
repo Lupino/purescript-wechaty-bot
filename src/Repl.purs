@@ -81,21 +81,25 @@ replaceWhitelist f xs = do
   ref <- ask
   lift $ modifyRef ref $ \ps -> putWhitelist (f xs (getWhitelist ps)) ps
 
-switch :: forall a eff. (Whitelist -> Interface -> a -> ReplState) -> a -> Repl eff Unit
-switch f a = do
+switch
+  :: forall a eff. (a -> Interface -> Eff (ref :: REF, readline :: READLINE, console :: CONSOLE, exception :: EXCEPTION, wechaty :: WECHATY | eff) Unit)
+  -> (Whitelist -> Interface -> a -> ReplState)
+  -> a -> Repl eff Unit
+switch p f a = do
   ref <- ask
   lift $ modifyRef ref $ \ps -> f (getWhitelist ps) (getInterface ps) a
+  lift $ p a =<< map getInterface (readRef ref)
 
 switchContact :: forall eff. Contact -> Repl eff Unit
-switchContact = switch IsContact
+switchContact = switch setContactPrompt IsContact
 
 switchManager :: forall eff. Repl eff Unit
 switchManager = do
   s <- lift self
-  switch IsManager s
+  switch setContactPrompt IsManager s
 
 switchRoom :: forall eff. Room -> Repl eff Unit
-switchRoom room = switch IsRoom room
+switchRoom room = switch setRoomPrompt IsRoom room
 
 data Cmd =
     FindContact String
