@@ -1,10 +1,10 @@
-module Repl (launchRepl, ReplState, initReplState, checkWhitelist, stdoutWrite) where
+module Repl (launchRepl, ReplState, initReplState, checkWhitelist) where
 
 import Prelude
 
 import Control.Monad.Aff (Aff, runAff_)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (log, CONSOLE)
+import Control.Monad.Eff.Console (error, CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION, message)
 import Data.Either (Either(..))
 import Data.String (trim, drop, length, null, joinWith)
@@ -19,9 +19,6 @@ import Control.Monad.Eff.Ref (REF, Ref, newRef, readRef, modifyRef)
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
 import Data.Array (elem, (:), delete, filter)
 import Data.Array (null) as A
-import Node.Stream (writeString)
-import Node.Process (stdout)
-import Node.Encoding (Encoding(UTF8))
 
 type Whitelist = Array String
 
@@ -162,27 +159,27 @@ handlers (FindContact n) = do
   ps <- get
   lift $ flip runAff_ (findAll n) $ \r -> do
     case r of
-      (Left e) -> log $ "Error: " <> message e
-      (Right []) -> log $ "Contact<<" <> n <> ">> Not Found."
+      (Left e) -> error $ "Error: " <> message e
+      (Right []) -> error $ "Contact<<" <> n <> ">> Not Found."
       (Right [c]) -> runRepl ref $ switchContact c
-      (Right xs) ->  log $ "Found Contact:\n" <> (joinWith "\n" $ map getContactName xs)
+      (Right xs) ->  error $ "Found Contact:\n" <> (joinWith "\n" $ map getContactName xs)
     showPrompt ps
 handlers (FindRoom n) = do
   ref <- ask
   ps <- get
   lift $ flip runAff_ (R.findAll n) $ \r -> do
     case r of
-      (Left e) -> log $ "Error: " <> message e
-      (Right []) ->  log $ "Room<<" <> n <> ">> Not Found."
+      (Left e) -> error $ "Error: " <> message e
+      (Right []) ->  error $ "Room<<" <> n <> ">> Not Found."
       (Right [c]) -> runRepl ref $ switchRoom c
-      (Right xs) ->  log $ "Found Room:\n" <> (joinWith "\n" $ map getRoomTopic xs)
+      (Right xs) ->  error $ "Found Room:\n" <> (joinWith "\n" $ map getRoomTopic xs)
     showPrompt ps
 
 handlers (Msg m) = do
   ps <- get
   lift $ flip runAff_ (sendMessage ps m) $ \r -> do
     case r of
-      (Left e) -> log $ "Error: " <> message e
+      (Left e) -> error $ "Error: " <> message e
       (Right _) -> pure unit
     showPrompt ps
 
@@ -193,7 +190,7 @@ handlers ClearWhitelist = replaceWhitelist clearWhitelist "" *> showPrompt_
 handlers Exit = switchManager *> showPrompt_
 
 handlers Help = do
-  lift $ log $ "\n" <> joinWith "\n" help
+  lift $ error $ "\n" <> joinWith "\n" help
   showPrompt_
 
 handlers Empty = showPrompt_
@@ -222,6 +219,3 @@ checkWhitelist ref h io = do
   wl <- getWhitelist <$> readRef ref
   if A.null wl then io
     else if elem h wl then io else pure unit
-
-stdoutWrite :: forall eff. String -> Eff (console :: CONSOLE, exception :: EXCEPTION | eff) Unit
-stdoutWrite xs = void $ writeString stdout UTF8 xs (pure unit)

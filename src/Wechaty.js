@@ -20,7 +20,9 @@ exports._onScan = function(bot) {
 exports.showQrcode = function(url) {
   return function() {
     var loginUrl = url.replace(/\/qrcode\//, '/l/')
-    QrcodeTerminal.generate(loginUrl);
+    QrcodeTerminal.generate(loginUrl, {small: true}, function(qrcode) {
+      console.error(qrcode);
+    });
   }
 }
 

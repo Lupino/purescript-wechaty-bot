@@ -6,7 +6,7 @@ import Config (get)
 import Control.Monad.Aff (launchAff_)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (log, CONSOLE)
+import Control.Monad.Eff.Console (log, error, CONSOLE)
 import Control.Monad.Eff.Now (NOW)
 import DB (DB)
 import Data.Maybe (Maybe(..))
@@ -22,7 +22,7 @@ import Plan.Trans (runPlanT, initRouteRef)
 import Worker (launchWorker)
 import Chatter (launchChatter)
 import Node.ReadLine (READLINE)
-import Repl (launchRepl, initReplState, checkWhitelist, stdoutWrite)
+import Repl (launchRepl, initReplState, checkWhitelist)
 import Control.Monad.Eff.Exception (EXCEPTION)
 
 handleScan :: forall eff. String -> Int -> Eff eff Unit
@@ -57,14 +57,13 @@ main = do
             Nothing -> do
               liftEff
                 $ checkWhitelist ps (getContactName c)
-                $ stdoutWrite $ "\nFrom<<" <> getContactName c <> ">>:\n" <> msg
+                $ error $ "From<<" <> getContactName c <> ">>:\n" <> msg
               if s then handleContact $ managerHandler client
                    else handleContact $ subscriberHandler
             Just r0 -> do
-              unless s
-                $ liftEff
+              liftEff
                 $ checkWhitelist ps (getRoomTopic r0)
-                $ stdoutWrite $ "\nRoom<<" <> getRoomTopic r0 <> ">><<" <> getContactName c <> ">>:\n" <> msg
+                $ error $ "Room<<" <> getRoomTopic r0 <> ">><<" <> getContactName c <> ">>:\n" <> msg
               handleRoom r0 s $ roomSubscriberHandler
 
         start

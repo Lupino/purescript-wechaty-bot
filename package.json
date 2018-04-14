@@ -6,7 +6,7 @@
   "scripts": {
     "postinstall": "bower cache clean && bower install && npm run build",
     "build": "pulp build --to index.js",
-    "start": "node index.js"
+    "start": "stmux -f spec"
   },
   "devDependencies": {
     "bower": "^1.8.4",
@@ -19,6 +19,7 @@
     "mongoose-auto-increment": "^5.0.1",
     "node-periodic": "^1.0.7",
     "qrcode-terminal": "^0.12.0",
+    "stmux": "^1.4.19",
     "wechaty": "^0.13.86"
   },
   "author": {
