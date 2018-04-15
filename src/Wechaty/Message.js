@@ -10,10 +10,16 @@ exports._sayTo = function(msg, replyTo, obj) {
   }
 }
 
+var re_emoji = /<img[^\[]+\[([^\]]+)][^>]+>/gi;
 exports._getContent = function(msg) {
   return function() {
     var content = msg.content();
     content = content.replace(/<br[^>]*>/ig, "\n");
+    content = content.replace(/<\/?a[^>]*>/ig, "");
+    content = content.replace(re_emoji, function(s) {
+      m = re_emoji.exec(s);
+      return m[1];
+    });
     return content;
   }
 }
