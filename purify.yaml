@@ -383,6 +383,17 @@ extra-deps:
   deps: []
   repo: https://github.com/purescript/purescript-partial
   commit: 4ede691a8cfe3a2166095fafc377e6f45dc0d911
+- name: purescript-periodic
+  deps:
+  - purescript-aff
+  repo: https://github.com/Lupino/purescript-periodic
+  commit: 9153bdfef914f9d4b927bd9ff0e18425794475e9
+- name: purescript-plan
+  deps:
+  - purescript-aff
+  - purescript-strings
+  repo: https://github.com/Lupino/purescript-plan
+  commit: 94bdb77c3b21d7668b279d2fe52b0db02fb6b11d
 - name: purescript-posix-types
   deps:
   - purescript-maybe
@@ -464,3 +475,9 @@ extra-deps:
   deps: []
   repo: https://github.com/purescript/purescript-unsafe-coerce
   commit: 1e021bf22c72c8cf9f699eb6011b634af75996f9
+- name: purescript-wechaty
+  deps:
+  - purescript-aff-promise
+  - purescript-aff
+  repo: https://github.com/Lupino/purescript-wechaty
+  commit: 16c983bcee263f3e56f33c2b28df4b7a9f70802d
