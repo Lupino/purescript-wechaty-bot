@@ -10,8 +10,8 @@ import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Ref (REF)
 import Data.String (trim)
 
-type ChatterM eff = PlanT String (Aff (ref :: REF | eff))
-type ActionM eff = ActionT (Aff (ref :: REF | eff))
+type ChatterM eff = PlanT Unit String (Aff (ref :: REF | eff))
+type ActionM eff = ActionT Unit (Aff (ref :: REF | eff))
 
 helloHandler :: forall eff. ActionM eff String
 helloHandler = pure "谢谢, 我很好"
