@@ -103,6 +103,7 @@ switchRoom room = switch setRoomPrompt IsRoom room
 data Cmd =
     FindContact String
   | FindRoom String
+  | ShowWhitelist
   | AddWhitelist String
   | RemoveWhitelist String
   | ClearWhitelist
@@ -118,6 +119,7 @@ parseCmd xs
   | startsWith xs ".whitelist add" = AddWhitelist $ trim $ drop 14 xs
   | startsWith xs ".whitelist remove" = RemoveWhitelist $ trim $ drop 17 xs
   | startsWith xs ".whitelist clear" = ClearWhitelist
+  | startsWith xs ".whitelist" = ShowWhitelist
   | startsWith xs ".exit" = Exit
   | startsWith xs ".help" = Help
   | null xs = Empty
@@ -127,6 +129,7 @@ hits :: Array String
 hits =
   [ ".contact"
   , ".room"
+  , ".whitelist"
   , ".whitelist add"
   , ".whitelist remove"
   , ".whitelist clear"
@@ -141,6 +144,7 @@ help :: Array String
 help =
   [ ".contact CONTACT          -- 切换用户"
   , ".room ROOM                -- 切换聊天群"
+  , ".whitelist                -- 显示白名单"
   , ".whitelist add STRING     -- 添加显示白名单"
   , ".whitelist remove STRING  -- 移除显示白名单"
   , ".whitelist clear          -- 清空显示白名单"
@@ -186,6 +190,9 @@ handlers (Msg m) = do
 handlers (AddWhitelist xs) = replaceWhitelist addWhitelist xs *> showPrompt_
 handlers (RemoveWhitelist xs) = replaceWhitelist removeWhitelist xs *> showPrompt_
 handlers ClearWhitelist = replaceWhitelist clearWhitelist "" *> showPrompt_
+handlers ShowWhitelist = do
+  wl <- getWhitelist <$> get
+  lift $ error $ "Whitelist:\n" <> joinWith "\n" wl
 
 handlers Exit = switchManager *> showPrompt_
 
