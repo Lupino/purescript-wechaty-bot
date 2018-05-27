@@ -1,6 +1,6 @@
-module Chatter
+module Chat
   (
-    launchChatter
+    launchChat
   , Options (..)
   ) where
 
@@ -17,7 +17,7 @@ data Options = Contact C.Contact
              | Room R.Room Boolean
              | Manager C.Contact
 
-type ChatterM = PlanT Options String Aff
+type ChatM = PlanT Options String Aff
 type ActionM = ActionT Options Aff
 
 helloHandler :: ActionM String
@@ -39,8 +39,13 @@ hello3Handler = do
   name1 <- trim <$> param "name1"
   pure $ "Hi, " <> name <> "你好, " <> name1 <> "你好"
 
-launchChatter :: ChatterM Unit
-launchChatter = do
+searchHandler :: ActionM String
+searchHandler = do
+  keyword <- trim <$> param "keyword"
+  pure keyword
+
+launchChat :: ChatM Unit
+launchChat = do
   respond (regexPattern "^你好$") helloHandler
   respond (regexPattern "^你好\\s*我是(.+)$") hello1Handler
   respond (paramPattern "你好:name:,:name1:") hello3Handler

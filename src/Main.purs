@@ -15,8 +15,8 @@ import Wechaty.Contact (say, getContactName, ContactT, Contact)
 import Wechaty.Room (getRoomTopic, RoomT, sayTo)
 import Wechaty.Message (handleContact, handleRoom, room, self, from, content)
 import Plan.Trans (runPlanT, initRouteRef, PlanT, reply)
-import Chatter (launchChatter)
-import Chatter as Chat
+import Chat (launchChat)
+import Chat as Chat
 -- import Repl (launchRepl, initReplState, checkWhitelist)
 import Utils (startsWith)
 import Data.String (trim, drop)
@@ -67,7 +67,7 @@ main = do
   routeRef <- initRouteRef
   launchAff_ $ do
     runPlanT routeRef $ do
-      launchChatter
+      launchChat
       runWechatyT (launchAff_ <<< runPlanT routeRef) bot $ do
         onScan $ \url code -> do
           handleScan url code

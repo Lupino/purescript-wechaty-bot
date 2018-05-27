@@ -3,47 +3,49 @@ module Repl (launchRepl, ReplState, initReplState, checkWhitelist) where
 import Prelude
 
 import Effect.Aff (Aff, runAff_)
-import Effect.Eff (Eff)
-import Effect.Eff.Console (error, CONSOLE)
+import Effect (Effect)
+import Effect.Console (error)
 import Exception (message)
 import Data.Either (Either(..))
 import Data.String (trim, drop, length, null, joinWith)
-import Node.ReadLine (Interface, READLINE, createConsoleInterface, setPrompt, setLineHandler, prompt, Completer)
+import Node.ReadLine (Interface, createConsoleInterface, setPrompt, setLineHandler, prompt, Completer)
 import Utils (startsWith)
 import Wechaty.Contact (findAll, getContactName, runContactT, say, Contact, self)
 import Wechaty.Room (findAll, say) as R
 import Wechaty.Room (Room, getRoomTopic, runRoomT)
-import Wechaty.Types (WECHATY)
-import Effect.Trans.Class (lift)
-import Control.Monad.Eff.Ref (REF, Ref, newRef, readRef, modifyRef)
+import Control.Monad.Trans.Class (lift)
+import Effect.Ref (Ref, newRef, readRef, modifyRef)
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
 import Data.Array (elem, (:), delete, filter)
 import Data.Array (null) as A
 
 type Whitelist = Array String
 
-data ReplState = IsContact Whitelist Interface Contact | IsRoom Whitelist Interface Room | IsManager Whitelist Interface Contact | Only Whitelist Interface
+data ReplState = IsContact Whitelist Interface Contact
+               | IsRoom Whitelist Interface Room
+               | IsManager Whitelist Interface Contact
+               | Only Whitelist Interface
 
 type Repl a = ReaderT (Ref ReplState) Effect a
 
-runRepl :: forall eff a. Ref ReplState -> Repl eff a -> Eff (ref :: REF, readline:: READLINE, console :: CONSOLE, exception :: EXCEPTION, wechaty :: WECHATY | eff) a
+runRepl :: forall a. Ref ReplState -> Repl a -> Effect a
 runRepl s m = runReaderT m s
 
-initReplState :: forall eff. Eff (ref :: REF, readline :: READLINE, console :: CONSOLE, exception :: EXCEPTION, wechaty :: WECHATY | eff) (Ref ReplState)
+initReplState :: Effect (Ref ReplState)
 initReplState = do
   rl <- createConsoleInterface completion
   newRef $ Only [] rl
 
-get :: forall eff. Repl eff ReplState
+get :: Repl ReplState
 get = do
   ref <- ask
   lift $ readRef ref
 
-setContactPrompt :: forall eff. Contact -> Interface -> Eff (readline :: READLINE | eff) Unit
+setContactPrompt :: Contact -> Interface -> Effect Unit
 setContactPrompt c = setPrompt ps (length ps)
   where ps = "Contact<<" <> getContactName c <> ">> "
 
-setRoomPrompt :: forall eff. Room -> Interface -> Eff (readline :: READLINE | eff) Unit
+setRoomPrompt :: Room -> Interface -> Effect Unit
 setRoomPrompt r = setPrompt ps (length ps)
   where ps = "Room<<" <> getRoomTopic r <> ">> "
 
@@ -75,29 +77,29 @@ removeWhitelist xs = delete xs
 clearWhitelist :: String -> Whitelist -> Whitelist
 clearWhitelist _ _ = []
 
-replaceWhitelist :: forall eff. (String -> Whitelist -> Whitelist) -> String -> Repl eff Unit
+replaceWhitelist :: (String -> Whitelist -> Whitelist) -> String -> Repl Unit
 replaceWhitelist f xs = do
   ref <- ask
   lift $ modifyRef ref $ \ps -> putWhitelist (f xs (getWhitelist ps)) ps
 
 switch
-  :: forall a eff. (a -> Interface -> Eff (ref :: REF, readline :: READLINE, console :: CONSOLE, exception :: EXCEPTION, wechaty :: WECHATY | eff) Unit)
+  :: forall a. (a -> Interface -> Effect Unit)
   -> (Whitelist -> Interface -> a -> ReplState)
-  -> a -> Repl eff Unit
+  -> a -> Repl Unit
 switch p f a = do
   ref <- ask
   lift $ modifyRef ref $ \ps -> f (getWhitelist ps) (getInterface ps) a
   lift $ p a =<< map getInterface (readRef ref)
 
-switchContact :: forall eff. Contact -> Repl eff Unit
+switchContact :: Contact -> Repl Unit
 switchContact = switch setContactPrompt IsContact
 
-switchManager :: forall eff. Repl eff Unit
+switchManager :: Repl Unit
 switchManager = do
   s <- lift self
   switch setContactPrompt IsManager s
 
-switchRoom :: forall eff. Room -> Repl eff Unit
+switchRoom :: Room -> Repl Unit
 switchRoom room = switch setRoomPrompt IsRoom room
 
 data Cmd =
@@ -137,7 +139,7 @@ hits =
   , ".help"
   ]
 
-completion :: forall eff. Completer eff
+completion :: Completer
 completion s = pure { completions: filter (flip startsWith s) hits, matched: s }
 
 help :: Array String
@@ -153,11 +155,11 @@ help =
   ]
 
 mkLineHandler
-  :: forall eff. Ref ReplState -> (Cmd -> Repl eff Unit)
-  -> String -> Eff (ref :: REF, readline:: READLINE, console :: CONSOLE, exception :: EXCEPTION, wechaty :: WECHATY | eff) Unit
+  :: Ref ReplState -> (Cmd -> Repl Unit)
+  -> String -> Effect Unit
 mkLineHandler ps f = runRepl ps <<< f <<< parseCmd
 
-handlers :: forall eff. Cmd -> Repl eff Unit
+handlers :: Cmd -> Repl Unit
 handlers (FindContact n) = do
   ref <- ask
   ps <- get
@@ -202,26 +204,26 @@ handlers Help = do
 
 handlers Empty = showPrompt_
 
-sendMessage :: forall eff. ReplState -> String -> Aff (readline :: READLINE, console :: CONSOLE, exception :: EXCEPTION, wechaty :: WECHATY | eff) Unit
+sendMessage :: ReplState -> String -> Aff Unit
 sendMessage (IsContact _ _ c) = runContactT c <<< say
 sendMessage (IsRoom _ _ c) = runRoomT c <<< R.say
 sendMessage (IsManager _ _ c) = runContactT c <<< say
 sendMessage (Only _ _) = \_ -> pure unit
 
-launchRepl :: forall eff. Ref ReplState -> Eff (ref :: REF, readline :: READLINE, console :: CONSOLE, exception :: EXCEPTION, wechaty :: WECHATY | eff) Unit
+launchRepl :: Ref ReplState -> Effect Unit
 launchRepl ref = do
   runRepl ref switchManager
   ps <- readRef ref
   setLineHandler (getInterface ps) (mkLineHandler ref handlers)
   showPrompt ps
 
-showPrompt :: forall eff. ReplState -> Eff (readline :: READLINE, console :: CONSOLE, exception :: EXCEPTION, wechaty :: WECHATY | eff) Unit
+showPrompt :: ReplState -> Effect Unit
 showPrompt = prompt <<< getInterface
 
-showPrompt_ :: forall eff. Repl eff Unit
+showPrompt_ :: Repl Unit
 showPrompt_ = lift <<< showPrompt =<< get
 
-checkWhitelist :: forall eff. Ref ReplState -> String -> Eff (ref :: REF | eff) Unit -> Eff (ref :: REF | eff) Unit
+checkWhitelist :: Ref ReplState -> String -> Effect Unit -> Effect Unit
 checkWhitelist ref h io = do
   wl <- getWhitelist <$> readRef ref
   if A.null wl then io
