@@ -6,12 +6,19 @@ module Chat
 
 import Prelude
 
-import Plan.Trans (PlanT, respond, param, ActionT, regexPattern, paramPattern)
+import Plan.Trans (PlanT, respond, param, ActionT, paramPattern)
 import Effect.Aff (Aff)
-import Data.String (trim)
+import Effect.Aff.Class (liftAff)
+import Data.String (trim, joinWith)
 import Wechaty.Contact (Contact) as C
 import Wechaty.Room (Room) as R
 import Data.Maybe (Maybe (..))
+import Data.FormURLEncoded (fromArray, encode)
+import Data.Tuple (Tuple (..))
+import Utils (fetchJSON)
+import Data.Argonaut.Core (toString, toObject, toArray, Json, caseJsonObject)
+import Foreign.Object (lookup)
+import Data.Array (catMaybes, concatMap)
 
 data Options = Contact C.Contact
              | Room R.Room Boolean
@@ -20,33 +27,24 @@ data Options = Contact C.Contact
 type ChatM = PlanT Options String Aff
 type ActionM = ActionT Options Aff
 
-helloHandler :: ActionM String
-helloHandler = pure "谢谢, 我很好"
-
-hello1Handler :: ActionM String
-hello1Handler = do
-  name <- param "1"
-  pure $ "Hi, " <> name <> "你好"
-
-hello2Handler :: ActionM String
-hello2Handler = do
-  name <- trim <$> param "name"
-  pure $ "Hi, " <> name <> "你好"
-
-hello3Handler :: ActionM String
-hello3Handler = do
-  name <- trim <$> param "name"
-  name1 <- trim <$> param "name1"
-  pure $ "Hi, " <> name <> "你好, " <> name1 <> "你好"
-
 searchHandler :: ActionM String
 searchHandler = do
   keyword <- trim <$> param "keyword"
-  pure keyword
+  ret <- liftAff
+    $ fetchJSON ("http://111.230.171.235:6000/api/search/?"
+    <> encode (fromArray [Tuple "q" (Just keyword)])) unit
+
+  let arr = toObject ret >>= lookup "hits" >>= toArray
+  case arr of
+    Just arr' -> pure $ joinWith "\n"
+                      $ catMaybes
+                      $ concatMap go arr'
+    Nothing -> pure "请尝试一下其它关键词"
+  where go :: Json -> Array (Maybe String)
+        go = caseJsonObject [] (\v -> [lookup "uri" v >>= toString, lookup "title" v >>= toString])
 
 launchChat :: ChatM Unit
 launchChat = do
-  respond (regexPattern "^你好$") helloHandler
-  respond (regexPattern "^你好\\s*我是(.+)$") hello1Handler
-  respond (paramPattern "你好:name:,:name1:") hello3Handler
-  respond (paramPattern "你好:name:") hello2Handler
+  respond (paramPattern "search:keyword:") searchHandler
+  respond (paramPattern "查找:keyword:") searchHandler
+  respond (paramPattern "搜索:keyword:") searchHandler

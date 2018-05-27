@@ -25,6 +25,7 @@
     "purescript-plan": "Lupino/purescript-plan#master",
     "purescript-wechaty": "Lupino/purescript-wechaty#master",
     "purescript-console": "^4.1.0",
-    "purescript-argonaut-core": "^4.0.0"
+    "purescript-argonaut-core": "^4.0.0",
+    "purescript-form-urlencoded": "^4.0.0"
   }
 }
