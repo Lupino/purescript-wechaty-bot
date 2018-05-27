@@ -2,49 +2,48 @@ module Main where
 
 import Prelude
 
-import Control.Monad.Aff (launchAff_)
-import Control.Monad.Aff.Class (class MonadAff)
+import Effect (Effect)
+import Effect.Aff (launchAff_)
+import Effect.Aff.Class (class MonadAff)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (log, error, CONSOLE)
-import Control.Monad.Eff.Now (NOW)
+import Effect.Class (liftEffect)
+import Effect.Console (log, error)
 import Data.Maybe (Maybe(..))
 import Data.Either (Either(..))
 import Wechaty (initWechaty, onScan, showQrcode, onLogin, onMessage, start, onError, runWechatyT)
 import Wechaty.Contact (say, getContactName, ContactT, Contact)
 import Wechaty.Room (getRoomTopic, RoomT, sayTo)
 import Wechaty.Message (handleContact, handleRoom, room, self, from, content)
-import Wechaty.Types (WECHATY)
-import Control.Monad.Eff.Ref (REF)
 import Plan.Trans (runPlanT, initRouteRef, PlanT, reply)
 import Chatter (launchChatter)
-import Node.ReadLine (READLINE)
-import Repl (launchRepl, initReplState, checkWhitelist)
-import Control.Monad.Eff.Exception (EXCEPTION)
+import Chatter as Chat
+-- import Repl (launchRepl, initReplState, checkWhitelist)
 import Utils (startsWith)
 import Data.String (trim, drop)
+import Control.Monad.Reader (ask)
 
 
-type ContactHandler m = ContactT (PlanT Unit String m)
+type ContactHandler m = ContactT (PlanT Chat.Options String m)
 
-type RoomHandler m = RoomT (PlanT Unit String m)
+type RoomHandler m = RoomT (PlanT Chat.Options String m)
 
 contactHandler
-  :: forall m eff. MonadAff (wechaty :: WECHATY, ref :: REF | eff) m
+  :: forall m. MonadAff m
   => String -> ContactHandler m Unit
 contactHandler xs = do
-  ret <- lift $ reply unit xs
+  c <- ask
+  ret <- lift $ reply (Chat.Contact c) xs
   case ret of
     Left _ -> pure unit
     Right m -> say m
 
 roomHandler
-  :: forall m0 eff. MonadAff (wechaty :: WECHATY, ref :: REF | eff) m0
+  :: forall m0. MonadAff m0
   => Contact -> Boolean -> String -> RoomHandler m0 Unit
-roomHandler contact manager xs =
+roomHandler contact manager xs = do
+  r <- ask
   go $ \m0 -> do
-    ret <- lift $ reply unit m0
+    ret <- lift $ reply (Chat.Room r manager) m0
     case ret of
       Left _ -> pure unit
       Right m -> sayTo contact m
@@ -56,14 +55,14 @@ roomHandler contact manager xs =
              | startsWith xs "@xiaoyun" = f $ trim $ drop 8 xs
              | otherwise = pure unit
 
-handleScan :: forall eff. String -> Int -> Eff eff Unit
+handleScan :: String -> Int -> Effect Unit
 handleScan url 200 = pure unit
 handleScan url 201 = pure unit
 handleScan url _ = showQrcode url
 
-main :: Eff (console :: CONSOLE, wechaty :: WECHATY, now :: NOW, ref :: REF, readline :: READLINE, exception :: EXCEPTION) Unit
+main :: Effect Unit
 main = do
-  ps <- initReplState
+  -- ps <- initReplState
   bot <- initWechaty
   routeRef <- initRouteRef
   launchAff_ $ do
@@ -75,9 +74,9 @@ main = do
           log url
           log $ "[" <> show code <> "] Scan QR Code above url to log in:"
         onLogin $ do
-          liftEff $ log "Logined"
+          liftEffect $ log "Logined"
           say "欢迎小主人归来"
-          liftEff $ launchRepl ps
+          -- liftEff $ launchRepl ps
         onMessage $ do
           r <- room
           s <- self
@@ -85,13 +84,13 @@ main = do
           msg <- content
           case r of
             Nothing -> do
-              liftEff
-                $ checkWhitelist ps (getContactName c)
+              liftEffect
+                -- $ checkWhitelist ps (getContactName c)
                 $ error $ "From<<" <> getContactName c <> ">>: " <> msg
               handleContact contactHandler
             Just r0 -> do
-              liftEff
-                $ checkWhitelist ps (getRoomTopic r0)
+              liftEffect
+                -- $ checkWhitelist ps (getRoomTopic r0)
                 $ error $ "Room<<" <> getRoomTopic r0 <> ">><<" <> getContactName c <> ">>: " <> msg
               handleRoom r0 s $ roomHandler
 

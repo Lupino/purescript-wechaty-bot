@@ -1,38 +1,45 @@
 module Chatter
   (
     launchChatter
+  , Options (..)
   ) where
 
 import Prelude
 
 import Plan.Trans (PlanT, respond, param, ActionT, regexPattern, paramPattern)
-import Control.Monad.Aff (Aff)
-import Control.Monad.Eff.Ref (REF)
+import Effect.Aff (Aff)
 import Data.String (trim)
+import Wechaty.Contact (Contact) as C
+import Wechaty.Room (Room) as R
+import Data.Maybe (Maybe (..))
 
-type ChatterM eff = PlanT Unit String (Aff (ref :: REF | eff))
-type ActionM eff = ActionT Unit (Aff (ref :: REF | eff))
+data Options = Contact C.Contact
+             | Room R.Room Boolean
+             | Manager C.Contact
 
-helloHandler :: forall eff. ActionM eff String
+type ChatterM = PlanT Options String Aff
+type ActionM = ActionT Options Aff
+
+helloHandler :: ActionM String
 helloHandler = pure "谢谢, 我很好"
 
-hello1Handler :: forall eff. ActionM eff String
+hello1Handler :: ActionM String
 hello1Handler = do
   name <- param "1"
   pure $ "Hi, " <> name <> "你好"
 
-hello2Handler :: forall eff. ActionM eff String
+hello2Handler :: ActionM String
 hello2Handler = do
   name <- trim <$> param "name"
   pure $ "Hi, " <> name <> "你好"
 
-hello3Handler :: forall eff. ActionM eff String
+hello3Handler :: ActionM String
 hello3Handler = do
   name <- trim <$> param "name"
   name1 <- trim <$> param "name1"
   pure $ "Hi, " <> name <> "你好, " <> name1 <> "你好"
 
-launchChatter :: forall eff. ChatterM eff Unit
+launchChatter :: ChatterM Unit
 launchChatter = do
   respond (regexPattern "^你好$") helloHandler
   respond (regexPattern "^你好\\s*我是(.+)$") hello1Handler

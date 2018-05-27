@@ -19,10 +19,13 @@
     "tests"
   ],
   "dependencies": {
-    "purescript-aff-promise": "^1.0.0",
-    "purescript-aff": "^4.0.2",
-    "purescript-node-readline": "^3.1.0",
+    "purescript-aff": "^5.0.0",
+    "purescript-effect": "^2.0.0",
+    "purescript-prelude": "^4.0.0",
     "purescript-plan": "Lupino/purescript-plan#master",
-    "purescript-wechaty": "Lupino/purescript-wechaty#master"
+    "purescript-wechaty": "Lupino/purescript-wechaty#master",
+    "purescript-console": "^4.1.0",
+    "purescript-argonaut-core": "^4.0.0",
+    "purescript-now": "^4.0.0"
   }
 }

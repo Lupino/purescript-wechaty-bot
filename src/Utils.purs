@@ -9,18 +9,24 @@ module Utils
 
 import Prelude
 
-import Control.Monad.Eff (Eff)
+import Effect (Effect)
+import Effect.Class (liftEffect)
 import Data.String (null, take, drop)
 import Data.DateTime.Instant (unInstant)
 import Data.Time.Duration (Milliseconds(..))
-import Control.Monad.Eff.Now (now, NOW)
+import Effect.Now (now)
 import Math (floor)
+import Control.Promise (Promise, toAff)
+import Effect.Aff (Aff)
+import Data.Argonaut.Core (Json)
 
 foreign import startsWith :: String -> String -> Boolean
 foreign import convertSchedAt :: forall a. a -> Number
 foreign import momentFormat :: Number -> String -> String
 foreign import formatTimeString :: Number -> String
 foreign import readNumber :: String -> Number
+
+foreign import _fetchJSON :: forall a. String -> a -> Effect (Promise Json)
 
 -- 1d 10h 10m 10s
 parseTimeString_ :: String -> String -> Number
@@ -36,7 +42,10 @@ parseTimeString_ r n
 parseTimeString :: String -> Number
 parseTimeString = parseTimeString_ ""
 
-getTimeStamp :: forall eff. Eff (now :: NOW | eff) Number
+getTimeStamp :: Effect Number
 getTimeStamp = do
   (Milliseconds n) <- map unInstant now
   pure $ floor (n / 1000.0)
+
+fetchJSON :: forall a. String -> a -> Aff Json
+fetchJSON url opts = liftEffect (_fetchJSON url opts) >>= toAff

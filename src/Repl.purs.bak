@@ -2,10 +2,10 @@ module Repl (launchRepl, ReplState, initReplState, checkWhitelist) where
 
 import Prelude
 
-import Control.Monad.Aff (Aff, runAff_)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (error, CONSOLE)
-import Control.Monad.Eff.Exception (EXCEPTION, message)
+import Effect.Aff (Aff, runAff_)
+import Effect.Eff (Eff)
+import Effect.Eff.Console (error, CONSOLE)
+import Exception (message)
 import Data.Either (Either(..))
 import Data.String (trim, drop, length, null, joinWith)
 import Node.ReadLine (Interface, READLINE, createConsoleInterface, setPrompt, setLineHandler, prompt, Completer)
@@ -14,7 +14,7 @@ import Wechaty.Contact (findAll, getContactName, runContactT, say, Contact, self
 import Wechaty.Room (findAll, say) as R
 import Wechaty.Room (Room, getRoomTopic, runRoomT)
 import Wechaty.Types (WECHATY)
-import Control.Monad.Trans.Class (lift)
+import Effect.Trans.Class (lift)
 import Control.Monad.Eff.Ref (REF, Ref, newRef, readRef, modifyRef)
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
 import Data.Array (elem, (:), delete, filter)
@@ -24,7 +24,7 @@ type Whitelist = Array String
 
 data ReplState = IsContact Whitelist Interface Contact | IsRoom Whitelist Interface Room | IsManager Whitelist Interface Contact | Only Whitelist Interface
 
-type Repl eff a = ReaderT (Ref ReplState) (Eff (ref :: REF, readline:: READLINE, console :: CONSOLE, exception :: EXCEPTION, wechaty :: WECHATY | eff)) a
+type Repl a = ReaderT (Ref ReplState) Effect a
 
 runRepl :: forall eff a. Ref ReplState -> Repl eff a -> Eff (ref :: REF, readline:: READLINE, console :: CONSOLE, exception :: EXCEPTION, wechaty :: WECHATY | eff) a
 runRepl s m = runReaderT m s

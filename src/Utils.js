@@ -1,4 +1,5 @@
 var moment = require('moment');
+var fetchJSON = require('higher-order-helper').fetchJSON;
 
 exports.startsWith = function(s) {
   return function(s1) {
@@ -49,4 +50,12 @@ exports.formatTimeString = function(t) {
 
 exports.readNumber = function(n) {
   return Number(n) || 0;
+}
+
+exports._fetchJSON = function(url) {
+  return function(options) {
+    return function() {
+      return fetchJSON(url, options);
+    }
+  }
 }
