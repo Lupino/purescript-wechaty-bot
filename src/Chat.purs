@@ -20,7 +20,7 @@ import Data.Tuple (Tuple (..))
 import Utils (fetchJSON)
 import Data.Argonaut.Core (toString, toObject, toArray, Json, caseJsonObject)
 import Foreign.Object (lookup)
-import Data.Array (catMaybes, concatMap)
+import Data.Array (catMaybes, concatMap, take)
 
 data Options = Contact C.Contact
              | Room R.Room Boolean
@@ -40,7 +40,8 @@ searchHandler = do
   case arr of
     Just arr' -> pure $ joinWith "\n"
                       $ catMaybes
-                      $ concatMap go arr'
+                      $ concatMap go
+                      $ take 3 arr'
     Nothing -> pure "请尝试一下其它关键词"
   where go :: Json -> Array (Maybe String)
         go = caseJsonObject [] (\v -> [lookup "uri" v >>= toString, lookup "title" v >>= toString])
