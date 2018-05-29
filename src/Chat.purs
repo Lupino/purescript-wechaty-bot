@@ -21,6 +21,7 @@ import Utils (fetchJSON)
 import Data.Argonaut.Core (toString, toObject, toArray, Json, caseJsonObject)
 import Foreign.Object (lookup)
 import Data.Array (catMaybes, concatMap, take)
+import Config (searchHost)
 
 data Options = Contact C.Contact
              | Room R.Room Boolean
@@ -33,15 +34,17 @@ searchHandler :: ActionM String
 searchHandler = do
   keyword <- trim <$> param "keyword"
   ret <- liftAff
-    $ fetchJSON ("http://111.230.171.235:6000/api/search/?"
-    <> encode (fromArray [Tuple "q" (Just keyword)])) unit
+    $ fetchJSON
+      ( "http://"
+      <> searchHost
+      <> "/api/search/?"
+      <> encode (fromArray [Tuple "q" (Just keyword)])) unit
 
-  let arr = toObject ret >>= lookup "hits" >>= toArray
-  case arr of
-    Just arr' -> pure $ joinWith "\n"
-                      $ catMaybes
-                      $ concatMap go
-                      $ take 3 arr'
+  case toObject ret >>= lookup "hits" >>= toArray of
+    Just arr -> pure $ joinWith "\n"
+                     $ catMaybes
+                     $ concatMap go
+                     $ take 3 arr
     Nothing -> pure "请尝试一下其它关键词"
   where go :: Json -> Array (Maybe String)
         go = caseJsonObject [] (\v -> [lookup "uri" v >>= toString, lookup "title" v >>= toString])
