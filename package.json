@@ -6,8 +6,7 @@
   "scripts": {
     "postinstall": "bower cache clean && bower install && npm run build",
     "build": "pulp build --to index.js",
-    "watch": "pulp -w build",
-    "start": "stmux -f spec"
+    "watch": "pulp -w build"
   },
   "devDependencies": {
     "bower": "^1.8.4",
@@ -18,7 +17,6 @@
     "higher-order-helper": "^1.0.3",
     "node-periodic": "^1.0.7",
     "qrcode-terminal": "^0.12.0",
-    "stmux": "^1.5.4",
     "wechaty": "^0.14.4"
   },
   "author": {
