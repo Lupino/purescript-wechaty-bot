@@ -9,7 +9,7 @@ import Prelude
 import Plan.Trans (PlanT, respond, param, ActionT, paramPattern, options, exit)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (liftAff)
-import Data.String (trim, joinWith)
+import Data.String (trim, joinWith, drop)
 import Wechaty.Contact (Contact) as C
 import Wechaty.Contact (getContactName)
 import Wechaty.Room (Room) as R
@@ -48,10 +48,10 @@ searchHandler = do
 removeRoomMember :: ActionM String
 removeRoomMember = do
   opts <- options
-  name <- param "name"
+  name <- trim <$> param "name"
   case opts of
     Room r true -> runRoomT r $ do
-      cs <- memberAll name
+      cs <- memberAll $ drop 1 name
       case cs of
         [] -> pure "没有找到用户"
         [c] -> do
