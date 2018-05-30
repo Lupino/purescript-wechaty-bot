@@ -5,7 +5,7 @@ import Prelude
 import Effect.Aff (Aff, runAff_)
 import Effect (Effect)
 import Effect.Console (error)
-import Exception (message)
+import Effect.Exception (message)
 import Data.Either (Either(..))
 import Data.String (trim, drop, length, null, joinWith)
 import Node.ReadLine (Interface, createConsoleInterface, setPrompt, setLineHandler, prompt, Completer)
@@ -14,7 +14,7 @@ import Wechaty.Contact (findAll, getContactName, runContactT, say, Contact, self
 import Wechaty.Room (findAll, say) as R
 import Wechaty.Room (Room, getRoomTopic, runRoomT)
 import Control.Monad.Trans.Class (lift)
-import Effect.Ref (Ref, newRef, readRef, modifyRef)
+import Effect.Ref (Ref, new, read, modify)
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
 import Data.Array (elem, (:), delete, filter)
 import Data.Array (null) as A
@@ -34,12 +34,12 @@ runRepl s m = runReaderT m s
 initReplState :: Effect (Ref ReplState)
 initReplState = do
   rl <- createConsoleInterface completion
-  newRef $ Only [] rl
+  new $ Only [] rl
 
 get :: Repl ReplState
 get = do
   ref <- ask
-  lift $ readRef ref
+  lift $ read ref
 
 setContactPrompt :: Contact -> Interface -> Effect Unit
 setContactPrompt c = setPrompt ps (length ps)
@@ -80,7 +80,7 @@ clearWhitelist _ _ = []
 replaceWhitelist :: (String -> Whitelist -> Whitelist) -> String -> Repl Unit
 replaceWhitelist f xs = do
   ref <- ask
-  lift $ modifyRef ref $ \ps -> putWhitelist (f xs (getWhitelist ps)) ps
+  void $ lift $ modify (\ps -> putWhitelist (f xs (getWhitelist ps)) ps) ref
 
 switch
   :: forall a. (a -> Interface -> Effect Unit)
@@ -88,8 +88,8 @@ switch
   -> a -> Repl Unit
 switch p f a = do
   ref <- ask
-  lift $ modifyRef ref $ \ps -> f (getWhitelist ps) (getInterface ps) a
-  lift $ p a =<< map getInterface (readRef ref)
+  void $ lift $ modify (\ps -> f (getWhitelist ps) (getInterface ps) a) ref
+  lift $ p a =<< map getInterface (read ref)
 
 switchContact :: Contact -> Repl Unit
 switchContact = switch setContactPrompt IsContact
@@ -213,7 +213,7 @@ sendMessage (Only _ _) = \_ -> pure unit
 launchRepl :: Ref ReplState -> Effect Unit
 launchRepl ref = do
   runRepl ref switchManager
-  ps <- readRef ref
+  ps <- read ref
   setLineHandler (getInterface ps) (mkLineHandler ref handlers)
   showPrompt ps
 
@@ -225,6 +225,6 @@ showPrompt_ = lift <<< showPrompt =<< get
 
 checkWhitelist :: Ref ReplState -> String -> Effect Unit -> Effect Unit
 checkWhitelist ref h io = do
-  wl <- getWhitelist <$> readRef ref
+  wl <- getWhitelist <$> read ref
   if A.null wl then io
     else if elem h wl then io else pure unit

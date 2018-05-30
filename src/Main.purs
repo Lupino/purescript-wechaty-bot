@@ -17,7 +17,7 @@ import Wechaty.Message (handleContact, handleRoom, room, self, from, content)
 import Plan.Trans (runPlanT, initRouteRef, PlanT, reply)
 import Chat (launchChat)
 import Chat as Chat
--- import Repl (launchRepl, initReplState, checkWhitelist)
+import Repl (launchRepl, initReplState, checkWhitelist)
 import Utils (startsWith)
 import Data.String (trim, drop)
 import Control.Monad.Reader (ask)
@@ -62,7 +62,7 @@ handleScan url _ = showQrcode url
 
 main :: Effect Unit
 main = do
-  -- ps <- initReplState
+  ps <- initReplState
   bot <- initWechaty
   routeRef <- initRouteRef
   launchAff_ $ do
@@ -76,7 +76,7 @@ main = do
         onLogin $ do
           liftEffect $ log "Logined"
           say "欢迎小主人归来"
-          -- liftEff $ launchRepl ps
+          liftEffect $ launchRepl ps
         onMessage $ do
           r <- room
           s <- self
@@ -85,12 +85,12 @@ main = do
           case r of
             Nothing -> do
               liftEffect
-                -- $ checkWhitelist ps (getContactName c)
+                $ checkWhitelist ps (getContactName c)
                 $ error $ "From<<" <> getContactName c <> ">>: " <> msg
               handleContact contactHandler
             Just r0 -> do
               liftEffect
-                -- $ checkWhitelist ps (getRoomTopic r0)
+                $ checkWhitelist ps (getRoomTopic r0)
                 $ error $ "Room<<" <> getRoomTopic r0 <> ">><<" <> getContactName c <> ">>: " <> msg
               handleRoom r0 s $ roomHandler
 
