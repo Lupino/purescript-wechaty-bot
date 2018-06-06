@@ -1,4 +1,12 @@
-module Repl (launchRepl, ReplState, initReplState, checkWhitelist) where
+module Repl
+  ( launchRepl
+  , ReplState
+  , initReplState
+  , checkWhitelist
+  , Select
+  , StateType
+  , Whitelist
+  ) where
 
 import Prelude
 
@@ -16,15 +24,27 @@ import Wechaty.Room (Room, getRoomTopic, runRoomT)
 import Control.Monad.Trans.Class (lift)
 import Effect.Ref (Ref, new, read, modify)
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
-import Data.Array (elem, (:), delete, filter)
+import Data.Array (elem, (:), delete, filter, mapWithIndex, (!!))
 import Data.Array (null) as A
+import Data.Maybe (Maybe (..))
+import Data.Int (fromString)
 
 type Whitelist = Array String
 
-data ReplState = IsContact Whitelist Interface Contact
-               | IsRoom Whitelist Interface Room
-               | IsManager Whitelist Interface Contact
-               | Only Whitelist Interface
+data StateType = IsContact Contact
+               | IsRoom Room
+               | IsManager Contact
+               | IsEmpty
+
+data Select = SelectRoom (Array Room)
+            | SelectContact (Array Contact)
+
+type ReplState =
+  { whitelist :: Whitelist
+  , interface :: Interface
+  , select :: Maybe Select
+  , state :: StateType
+  }
 
 type Repl a = ReaderT (Ref ReplState) Effect a
 
@@ -34,7 +54,7 @@ runRepl s m = runReaderT m s
 initReplState :: Effect (Ref ReplState)
 initReplState = do
   rl <- createConsoleInterface completion
-  new $ Only [] rl
+  new {whitelist: [], interface: rl, select: Nothing, state: IsEmpty}
 
 get :: Repl ReplState
 get = do
@@ -49,24 +69,6 @@ setRoomPrompt :: Room -> Interface -> Effect Unit
 setRoomPrompt r = setPrompt ps (length ps)
   where ps = "Room<<" <> getRoomTopic r <> ">> "
 
-getInterface :: ReplState -> Interface
-getInterface (IsContact _ rl _) = rl
-getInterface (IsRoom _ rl _) = rl
-getInterface (IsManager _ rl _) = rl
-getInterface (Only _ rl) = rl
-
-getWhitelist :: ReplState -> Whitelist
-getWhitelist (IsContact w _ _) = w
-getWhitelist (IsRoom w _ _) = w
-getWhitelist (IsManager w _ _) = w
-getWhitelist (Only w _) = w
-
-putWhitelist :: Whitelist -> ReplState -> ReplState
-putWhitelist wl (IsContact _ rl c) = IsContact wl rl c
-putWhitelist wl (IsRoom _ rl c) = IsRoom wl rl c
-putWhitelist wl (IsManager _ rl c) = IsManager wl rl c
-putWhitelist wl (Only _ rl) = Only wl rl
-
 addWhitelist :: String -> Whitelist -> Whitelist
 addWhitelist xs wl | elem xs wl = wl
                    | otherwise = xs : wl
@@ -80,16 +82,18 @@ clearWhitelist _ _ = []
 replaceWhitelist :: (String -> Whitelist -> Whitelist) -> String -> Repl Unit
 replaceWhitelist f xs = do
   ref <- ask
-  void $ lift $ modify (\ps -> putWhitelist (f xs (getWhitelist ps)) ps) ref
+  void $ lift $ modify (\ps -> ps {whitelist = f xs ps.whitelist}) ref
 
-switch
-  :: forall a. (a -> Interface -> Effect Unit)
-  -> (Whitelist -> Interface -> a -> ReplState)
-  -> a -> Repl Unit
+adjustSelect :: Maybe Select -> Repl Unit
+adjustSelect xs = do
+  ref <- ask
+  void $ lift $ modify (\ps -> ps {select = xs}) ref
+
+switch :: forall a. (a -> Interface -> Effect Unit) -> (a -> StateType) -> a -> Repl Unit
 switch p f a = do
   ref <- ask
-  void $ lift $ modify (\ps -> f (getWhitelist ps) (getInterface ps) a) ref
-  lift $ p a =<< map getInterface (read ref)
+  ps <- lift $ modify (\rs -> rs {state = f a}) ref
+  lift $ p a ps.interface
 
 switchContact :: Contact -> Repl Unit
 switchContact = switch setContactPrompt IsContact
@@ -105,6 +109,7 @@ switchRoom room = switch setRoomPrompt IsRoom room
 data Cmd =
     FindContact String
   | FindRoom String
+  | Select String
   | ShowWhitelist
   | AddWhitelist String
   | RemoveWhitelist String
@@ -118,6 +123,7 @@ parseCmd :: String -> Cmd
 parseCmd xs
   | startsWith xs ".contact" = FindContact $ trim $ drop 8 xs
   | startsWith xs ".room" = FindRoom $ trim $ drop 5 xs
+  | startsWith xs ".select" = Select $ trim $ drop 7 xs
   | startsWith xs ".whitelist add" = AddWhitelist $ trim $ drop 14 xs
   | startsWith xs ".whitelist remove" = RemoveWhitelist $ trim $ drop 17 xs
   | startsWith xs ".whitelist clear" = ClearWhitelist
@@ -131,6 +137,7 @@ hits :: Array String
 hits =
   [ ".contact"
   , ".room"
+  , ".select"
   , ".whitelist"
   , ".whitelist add"
   , ".whitelist remove"
@@ -146,6 +153,7 @@ help :: Array String
 help =
   [ ".contact CONTACT          -- 切换用户"
   , ".room ROOM                -- 切换聊天群"
+  , ".select INT               -- 选择用户或聊天群"
   , ".whitelist                -- 显示白名单"
   , ".whitelist add STRING     -- 添加显示白名单"
   , ".whitelist remove STRING  -- 移除显示白名单"
@@ -168,7 +176,11 @@ handlers (FindContact n) = do
       (Left e) -> error $ "Error: " <> message e
       (Right []) -> error $ "Contact<<" <> n <> ">> Not Found."
       (Right [c]) -> runRepl ref $ switchContact c
-      (Right xs) ->  error $ "Found Contact:\n" <> (joinWith "\n" $ map getContactName xs)
+      (Right xs) -> do
+         error $ "Found Contact:\n"
+               <> (joinWith "\n" $ mapWithIndex (\i c -> show i <> ". " <> getContactName c) xs)
+               <> "\n.select INT 选择用户"
+         runRepl ref $ adjustSelect (Just (SelectContact xs))
     showPrompt ps
 handlers (FindRoom n) = do
   ref <- ask
@@ -178,12 +190,37 @@ handlers (FindRoom n) = do
       (Left e) -> error $ "Error: " <> message e
       (Right []) ->  error $ "Room<<" <> n <> ">> Not Found."
       (Right [c]) -> runRepl ref $ switchRoom c
-      (Right xs) ->  error $ "Found Room:\n" <> (joinWith "\n" $ map getRoomTopic xs)
+      (Right xs) -> do
+         error $ "Found Room:\n"
+               <> (joinWith "\n" $ mapWithIndex (\i c -> show i <> ". " <> getRoomTopic c) xs)
+               <> "\n.select INT 选择聊天群"
+         runRepl ref $ adjustSelect (Just (SelectRoom xs))
     showPrompt ps
+
+handlers (Select id0) = do
+  ps <- get
+  let v0 = do
+        idx <- fromString id0
+        se <- ps.select
+        case se of
+          (SelectContact xs) -> do
+             v <- xs !! idx
+             pure (SelectContact [v])
+          (SelectRoom xs) -> do
+             v <- xs !! idx
+             pure (SelectRoom [v])
+
+  case v0 of
+    Just (SelectContact [v]) -> switchContact v
+    Just (SelectRoom [v]) -> switchRoom v
+    _ -> pure unit
+
+  showPrompt_
+
 
 handlers (Msg m) = do
   ps <- get
-  lift $ flip runAff_ (sendMessage ps m) $ \r -> do
+  lift $ flip runAff_ (sendMessage ps.state m) $ \r -> do
     case r of
       (Left e) -> error $ "Error: " <> message e
       (Right _) -> pure unit
@@ -193,8 +230,8 @@ handlers (AddWhitelist xs) = replaceWhitelist addWhitelist xs *> showPrompt_
 handlers (RemoveWhitelist xs) = replaceWhitelist removeWhitelist xs *> showPrompt_
 handlers ClearWhitelist = replaceWhitelist clearWhitelist "" *> showPrompt_
 handlers ShowWhitelist = do
-  wl <- getWhitelist <$> get
-  lift $ error $ "Whitelist:\n" <> joinWith "\n" wl
+  ps <- get
+  lift $ error $ "Whitelist:\n" <> joinWith "\n" ps.whitelist
 
 handlers Exit = switchManager *> showPrompt_
 
@@ -204,27 +241,27 @@ handlers Help = do
 
 handlers Empty = showPrompt_
 
-sendMessage :: ReplState -> String -> Aff Unit
-sendMessage (IsContact _ _ c) = runContactT c <<< say
-sendMessage (IsRoom _ _ c) = runRoomT c <<< R.say
-sendMessage (IsManager _ _ c) = runContactT c <<< say
-sendMessage (Only _ _) = \_ -> pure unit
+sendMessage :: StateType -> String -> Aff Unit
+sendMessage (IsContact c) = runContactT c <<< say
+sendMessage (IsRoom c) = runRoomT c <<< R.say
+sendMessage (IsManager c) = runContactT c <<< say
+sendMessage IsEmpty = \_ -> pure unit
 
 launchRepl :: Ref ReplState -> Effect Unit
 launchRepl ref = do
   runRepl ref switchManager
   ps <- read ref
-  setLineHandler (getInterface ps) (mkLineHandler ref handlers)
+  setLineHandler ps.interface (mkLineHandler ref handlers)
   showPrompt ps
 
 showPrompt :: ReplState -> Effect Unit
-showPrompt = prompt <<< getInterface
+showPrompt ps = prompt ps.interface
 
 showPrompt_ :: Repl Unit
 showPrompt_ = lift <<< showPrompt =<< get
 
 checkWhitelist :: Ref ReplState -> String -> Effect Unit -> Effect Unit
 checkWhitelist ref h io = do
-  wl <- getWhitelist <$> read ref
-  if A.null wl then io
-    else if elem h wl then io else pure unit
+  ps <- read ref
+  if A.null ps.whitelist then io
+    else if elem h ps.whitelist then io else pure unit
