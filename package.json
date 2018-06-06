@@ -15,9 +15,8 @@
   },
   "dependencies": {
     "higher-order-helper": "^1.0.3",
-    "node-periodic": "^1.0.7",
     "qrcode-terminal": "^0.12.0",
-    "wechaty": "^0.14.4"
+    "wechaty": "^0.14.10"
   },
   "author": {
     "name": "Li Meng Jun",
