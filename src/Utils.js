@@ -1,4 +1,4 @@
-let fetchJSON = require('higher-order-helper').fetchJSON;
+const fetchJSON = require('higher-order-helper').fetchJSON;
 
 exports.startsWith = function(s) {
   return function(s1) {
