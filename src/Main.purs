@@ -21,6 +21,8 @@ import Repl (launchRepl, initReplState, checkWhitelist)
 import Utils (startsWith)
 import Data.String (trim, drop)
 import Control.Monad.Reader (ask)
+import DB (messageMod)
+import Database.Sequelize (sync)
 
 
 type ContactHandler m = ContactT (PlanT Chat.Options String m)
@@ -66,6 +68,7 @@ main = do
   bot <- initWechaty
   routeRef <- initRouteRef
   launchAff_ $ do
+    sync messageMod {force: false}
     runPlanT routeRef $ do
       launchChat
       runWechatyT (launchAff_ <<< runPlanT routeRef) bot $ do
