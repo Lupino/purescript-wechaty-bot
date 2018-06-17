@@ -1,4 +1,5 @@
 const fetchJSON = require('higher-order-helper').fetchJSON;
+const dayjs = require('dayjs');
 
 exports.startsWith = function(s) {
   return function(s1) {
@@ -13,3 +14,7 @@ exports._fetchJSON = function(url) {
     };
   };
 };
+
+exports.formatDate = function(date) {
+  return dayjs(date * 1000).format('YYYY-MM-DD HH:mm:ss');
+}

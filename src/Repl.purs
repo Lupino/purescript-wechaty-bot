@@ -10,24 +10,27 @@ module Repl
 
 import Prelude
 
-import Effect.Aff (Aff, runAff_)
-import Effect (Effect)
-import Effect.Console (error)
-import Effect.Exception (message)
-import Data.Either (Either(..))
-import Data.String (trim, drop, length, null, joinWith)
-import Node.ReadLine (Interface, createConsoleInterface, setPrompt, setLineHandler, prompt, Completer)
-import Utils (startsWith)
-import Wechaty.Contact (findAll, getContactName, runContactT, say, Contact, self)
-import Wechaty.Room (findAll, say) as R
-import Wechaty.Room (Room, getRoomTopic, runRoomT)
-import Control.Monad.Trans.Class (lift)
-import Effect.Ref (Ref, new, read, modify)
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
+import Control.Monad.Trans.Class (lift)
+import DB (messageMod)
 import Data.Array (elem, (:), delete, filter, mapWithIndex, (!!))
 import Data.Array (null) as A
-import Data.Maybe (Maybe (..))
+import Data.Either (Either(..))
 import Data.Int (fromString)
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.String (trim, drop, length, null, joinWith, takeWhile, dropWhile, codePointFromChar)
+import Database.Sequelize (findOne, findAll, create, destory, timestamp, update) as DB
+import Effect (Effect)
+import Effect.Aff (Aff, runAff_)
+import Effect.Class (liftEffect)
+import Effect.Console (error)
+import Effect.Exception (message)
+import Effect.Ref (Ref, new, read, modify)
+import Node.ReadLine (Interface, createConsoleInterface, setPrompt, setLineHandler, prompt, Completer)
+import Utils (formatDate, parseTimeString, startsWith)
+import Wechaty.Contact (Contact, findAll, getContactName, runContactT, say, self)
+import Wechaty.Room (Room, getRoomTopic, runRoomT)
+import Wechaty.Room (findAll, say) as R
 
 type Whitelist = Array String
 
@@ -115,6 +118,12 @@ data Cmd =
   | RemoveWhitelist String
   | ClearWhitelist
   | Msg String
+  | AddTask String
+  | ListTask
+  | GetTask Int
+  | SetTaskSchedIn Int String
+  | SetTaskRepeat Int String
+  | DelTask Int
   | Exit
   | Help
   | Empty
@@ -128,10 +137,25 @@ parseCmd xs
   | startsWith xs ".whitelist remove" = RemoveWhitelist $ trim $ drop 17 xs
   | startsWith xs ".whitelist clear" = ClearWhitelist
   | startsWith xs ".whitelist" = ShowWhitelist
+  | startsWith xs ".task add" = AddTask $ trim $ drop 9 xs
+  | startsWith xs ".task list" = ListTask
+  | startsWith xs ".task get" = fromMaybe Empty $ map GetTask $ fromString $ trim $ drop 9 xs
+  | startsWith xs ".task schedin" = parseTaskCmd SetTaskSchedIn $ trim $ drop 13 xs
+  | startsWith xs ".task repeat" = parseTaskCmd SetTaskRepeat $ trim $ drop 12 xs
+  | startsWith xs ".task del" = fromMaybe Empty $ map DelTask $ fromString $ trim $ drop 9 xs
   | startsWith xs ".exit" = Exit
   | startsWith xs ".help" = Help
   | null xs = Empty
   | otherwise = Msg xs
+
+parseTaskCmd :: (Int -> String -> Cmd) -> String -> Cmd
+parseTaskCmd f xs =
+  case fromString h of
+    Nothing -> Empty
+    Just h' -> f h' (trim t)
+  where h = takeWhile isSpace xs
+        t = dropWhile isSpace xs
+        isSpace v = v == codePointFromChar ' '
 
 hits :: Array String
 hits =
@@ -142,6 +166,12 @@ hits =
   , ".whitelist add"
   , ".whitelist remove"
   , ".whitelist clear"
+  , ".task add"
+  , ".task list"
+  , ".task get"
+  , ".task schedin"
+  , ".task repeat"
+  , ".task del"
   , ".exit"
   , ".help"
   ]
@@ -158,6 +188,12 @@ help =
   , ".whitelist add STRING     -- 添加显示白名单"
   , ".whitelist remove STRING  -- 移除显示白名单"
   , ".whitelist clear          -- 清空显示白名单"
+  , ".task add STRING          -- 添加任务"
+  , ".task list                -- 查看所有任务"
+  , ".task get INT             -- 查看单条任务"
+  , ".task schedin INT STRING  -- 任务多长时间后执行"
+  , ".task repeat INT STRING   -- 任务重复周期"
+  , ".task del INT             -- 删除任务"
   , ".exit                     -- 退出聊天, 跟自己聊"
   , ".help                     -- 显示本帮助"
   ]
@@ -232,6 +268,83 @@ handlers ClearWhitelist = replaceWhitelist clearWhitelist "" *> showPrompt_
 handlers ShowWhitelist = do
   ps <- get
   lift $ error $ "Whitelist:\n" <> joinWith "\n" ps.whitelist
+  showPrompt_
+
+handlers (AddTask msg) = do
+  ps <- get
+  lift $ flip runAff_ (go ps.state) $ \r -> do
+    case r of
+      (Left e) -> error $ "Error: " <> message e
+      (Right _) -> pure unit
+    showPrompt ps
+
+  where go :: StateType -> Aff Unit
+        go (IsContact c) = saveContactTask c
+        go (IsRoom r) = saveRoomTask r
+        go (IsManager c) = saveContactTask c
+        go IsEmpty = pure unit
+
+        saveContactTask :: Contact -> Aff Unit
+        saveContactTask c = do
+          t <- DB.create messageMod {user: "user-" <> getContactName c, message: msg}
+          liftEffect $ showHelp t
+
+        saveRoomTask :: Room -> Aff Unit
+        saveRoomTask r = do
+          t <- DB.create messageMod {user: "room-" <> getRoomTopic r, message: msg}
+          liftEffect $ showHelp t
+
+        showHelp :: forall task. {id :: Int | task} -> Effect Unit
+        showHelp t =
+          error $ "Task[" <>  show t.id <> "] created.\n"
+            <> "Use task schedin " <> show t.id
+            <> " STRING  to set the sched time"
+
+handlers ListTask = do
+  ps <- get
+  lift $ flip runAff_ (DB.findAll messageMod {}) $ \r -> do
+    case r of
+      Left e -> error $ message e
+      Right r0 -> error $ joinWith "\n" $ map formatTask r0
+
+    showPrompt ps
+
+handlers (GetTask id) = do
+  ps <- get
+  lift $ flip runAff_ (DB.findOne messageMod {where: {id: id}}) $ \r -> do
+    case r of
+      Left e -> error $ message e
+      Right Nothing -> error $ "Not found."
+      Right (Just t) -> error $ formatTask t
+    showPrompt ps
+
+handlers (SetTaskSchedIn id later) = do
+  ps <- get
+  schedat <- lift $ (_ + parseTimeString later) <$> DB.timestamp
+
+  lift $ flip runAff_ (DB.update messageMod {where: {id: id}} {sched_at: schedat}) $ \r -> do
+    case r of
+      Left e -> error $ message e
+      Right _ -> error "Sched time changed."
+
+    showPrompt ps
+
+handlers (SetTaskRepeat id repeat) = do
+  ps <- get
+  lift $ flip runAff_ (DB.update messageMod {where: {id: id}} {repeat: repeat}) $ \r -> do
+    case r of
+      Left e -> error $ message e
+      Right _ -> error "Repeat changed."
+
+    showPrompt ps
+
+handlers (DelTask id) = do
+  ps <- get
+  lift $ flip runAff_ (DB.destory messageMod {where: {id: id}}) $ \r -> do
+    case r of
+      Left e -> error $ message e
+      Right _ -> error $ "Task " <> show id <> " deleted."
+    showPrompt ps
 
 handlers Exit = switchManager *> showPrompt_
 
@@ -240,6 +353,21 @@ handlers Help = do
   showPrompt_
 
 handlers Empty = showPrompt_
+
+formatTask ::
+  { id :: Int
+  , user :: String
+  , message :: String
+  , sched_at :: Int
+  , repeat :: String
+  } -> String
+formatTask t = joinWith "\n"
+  [ "id: " <> show t.id
+  , "user: " <> t.user
+  , "message: " <> t.message
+  , "sched_at: " <> formatDate t.sched_at
+  , "repeat: " <> t.repeat
+  ]
 
 sendMessage :: StateType -> String -> Aff Unit
 sendMessage (IsContact c) = runContactT c <<< say

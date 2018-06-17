@@ -1,9 +1,12 @@
-module DB where
+module DB
+  ( Message
+  , messageMod
+  ) where
 
 import Prelude
 
 import Config (dsn)
-import Database.Sequelize (ModelOf, Sequelize, connect, define, json, string, timestamp, uint)
+import Database.Sequelize (ModelOf, Sequelize, connect, define, string, timestamp, uint)
 import Effect (Effect)
 import Effect.Unsafe (unsafePerformEffect)
 
@@ -27,7 +30,7 @@ messageMod :: ModelOf Message
 messageMod = define sequelize "message"
   { user: string 150
   , message: string 1500
-  , sched_at: uint 10
-  , repeat: string 150
+  , sched_at: ct
+  , repeat: {type: string 150, defaultValue: ""}
   }
   $ options []
