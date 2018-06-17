@@ -156,7 +156,7 @@ parseTaskCmd f xs =
     Just h' -> f h' (trim t)
   where h = takeWhile isSpace xs
         t = dropWhile isSpace xs
-        isSpace v = v == codePointFromChar ' '
+        isSpace v = v /= codePointFromChar ' '
 
 hits :: Array String
 hits =
@@ -323,7 +323,7 @@ handlers (SetTaskSchedIn id later) = do
   ps <- get
   schedat <- lift $ toUnixTime <<< adjustTime later <$> now
 
-  lift $ flip runAff_ (DB.update messageMod {where: {id: id}} {sched_at: schedat}) $ \r -> do
+  lift $ flip runAff_ (DB.update messageMod {sched_at: schedat} {where: {id: id}}) $ \r -> do
     case r of
       Left e -> error $ message e
       Right _ -> error "Sched time changed."
@@ -332,7 +332,7 @@ handlers (SetTaskSchedIn id later) = do
 
 handlers (SetTaskRepeat id repeat) = do
   ps <- get
-  lift $ flip runAff_ (DB.update messageMod {where: {id: id}} {repeat: repeat}) $ \r -> do
+  lift $ flip runAff_ (DB.update messageMod {repeat: repeat} {where: {id: id}}) $ \r -> do
     case r of
       Left e -> error $ message e
       Right _ -> error "Repeat changed."
