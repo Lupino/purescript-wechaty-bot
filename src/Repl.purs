@@ -15,11 +15,12 @@ import Control.Monad.Trans.Class (lift)
 import DB (messageMod)
 import Data.Array (elem, (:), delete, filter, mapWithIndex, (!!))
 import Data.Array (null) as A
+import Data.Dayjs (now, toUnixTime)
 import Data.Either (Either(..))
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (trim, drop, length, null, joinWith, takeWhile, dropWhile, codePointFromChar)
-import Database.Sequelize (findOne, findAll, create, destory, timestamp, update) as DB
+import Database.Sequelize (findOne, findAll, create, destory, update) as DB
 import Effect (Effect)
 import Effect.Aff (Aff, runAff_)
 import Effect.Class (liftEffect)
@@ -27,7 +28,7 @@ import Effect.Console (error)
 import Effect.Exception (message)
 import Effect.Ref (Ref, new, read, modify)
 import Node.ReadLine (Interface, createConsoleInterface, setPrompt, setLineHandler, prompt, Completer)
-import Utils (formatDate, parseTimeString, startsWith)
+import Utils (formatDate, adjustTime, startsWith)
 import Wechaty.Contact (Contact, findAll, getContactName, runContactT, say, self)
 import Wechaty.Room (Room, getRoomTopic, runRoomT)
 import Wechaty.Room (findAll, say) as R
@@ -320,7 +321,7 @@ handlers (GetTask id) = do
 
 handlers (SetTaskSchedIn id later) = do
   ps <- get
-  schedat <- lift $ (_ + parseTimeString later) <$> DB.timestamp
+  schedat <- lift $ toUnixTime <<< adjustTime later <$> now
 
   lift $ flip runAff_ (DB.update messageMod {where: {id: id}} {sched_at: schedat}) $ \r -> do
     case r of
