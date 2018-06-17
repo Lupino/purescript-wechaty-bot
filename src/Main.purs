@@ -2,27 +2,29 @@ module Main where
 
 import Prelude
 
+import Chat (launchChat)
+import Chat as Chat
+import Config (periodicHost)
+import Control.Monad.Reader (ask)
+import Control.Monad.Trans.Class (lift)
+import DB (messageMod)
+import Data.Either (Either(..))
+import Data.Maybe (Maybe(..))
+import Data.String (trim, drop)
+import Database.Sequelize (sync)
 import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Effect.Aff.Class (class MonadAff)
-import Control.Monad.Trans.Class (lift)
 import Effect.Class (liftEffect)
 import Effect.Console (log, error)
-import Data.Maybe (Maybe(..))
-import Data.Either (Either(..))
-import Wechaty (initWechaty, onScan, showQrcode, onLogin, onMessage, start, onError, runWechatyT)
-import Wechaty.Contact (say, getContactName, ContactT, Contact)
-import Wechaty.Room (getRoomTopic, RoomT, sayTo)
-import Wechaty.Message (handleContact, handleRoom, room, self, from, content)
+import Periodic.Client (newClient)
 import Plan.Trans (runPlanT, initRouteRef, PlanT, reply)
-import Chat (launchChat)
-import Chat as Chat
 import Repl (launchRepl, initReplState, checkWhitelist)
 import Utils (startsWith)
-import Data.String (trim, drop)
-import Control.Monad.Reader (ask)
-import DB (messageMod)
-import Database.Sequelize (sync)
+import Wechaty (initWechaty, onScan, showQrcode, onLogin, onMessage, start, onError, runWechatyT)
+import Wechaty.Contact (say, getContactName, ContactT, Contact)
+import Wechaty.Message (handleContact, handleRoom, room, self, from, content)
+import Wechaty.Room (getRoomTopic, RoomT, sayTo)
 
 
 type ContactHandler m = ContactT (PlanT Chat.Options String m)
@@ -64,7 +66,8 @@ handleScan url _ = showQrcode url
 
 main :: Effect Unit
 main = do
-  ps <- initReplState
+  client <- newClient periodicHost {max: 10}
+  ps <- initReplState client
   bot <- initWechaty
   routeRef <- initRouteRef
   launchAff_ $ do

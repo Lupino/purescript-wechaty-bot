@@ -28,6 +28,7 @@ import Effect.Console (error)
 import Effect.Exception (message)
 import Effect.Ref (Ref, new, read, modify)
 import Node.ReadLine (Interface, createConsoleInterface, setPrompt, setLineHandler, prompt, Completer)
+import Periodic.Client (Client, submitJob)
 import Utils (formatDate, adjustTime, startsWith)
 import Wechaty.Contact (Contact, findAll, getContactName, runContactT, say, self)
 import Wechaty.Room (Room, getRoomTopic, runRoomT)
@@ -48,6 +49,7 @@ type ReplState =
   , interface :: Interface
   , select :: Maybe Select
   , state :: StateType
+  , periodic :: Client
   }
 
 type Repl a = ReaderT (Ref ReplState) Effect a
@@ -55,10 +57,10 @@ type Repl a = ReaderT (Ref ReplState) Effect a
 runRepl :: forall a. Ref ReplState -> Repl a -> Effect a
 runRepl s m = runReaderT m s
 
-initReplState :: Effect (Ref ReplState)
-initReplState = do
+initReplState :: Client -> Effect (Ref ReplState)
+initReplState c = do
   rl <- createConsoleInterface completion
-  new {whitelist: [], interface: rl, select: Nothing, state: IsEmpty}
+  new {whitelist: [], interface: rl, select: Nothing, state: IsEmpty, periodic: c}
 
 get :: Repl ReplState
 get = do
@@ -321,14 +323,23 @@ handlers (GetTask id) = do
 
 handlers (SetTaskSchedIn id later) = do
   ps <- get
-  schedat <- lift $ toUnixTime <<< adjustTime later <$> now
-
-  lift $ flip runAff_ (DB.update messageMod {sched_at: schedat} {where: {id: id}}) $ \r -> do
+  lift $ flip runAff_ (go ps) $ \r -> do
     case r of
       Left e -> error $ message e
-      Right _ -> error "Sched time changed."
+      Right _ -> pure unit
 
     showPrompt ps
+
+  where go :: ReplState -> Aff Unit
+        go ps = do
+          t <- DB.findOne messageMod {where: {id: id}}
+          case t of
+            Nothing -> liftEffect $ error $ "Task " <> show id <> " is not found."
+            Just _ -> do
+              schedat <- liftEffect $ toUnixTime <<< adjustTime later <$> now
+              DB.update messageMod {sched_at: schedat} {where: {id: id}}
+              submitJob ps.periodic {name: show id, func: "send-message", sched_at: schedat}
+              liftEffect $ error $ "Modify sched time done."
 
 handlers (SetTaskRepeat id repeat) = do
   ps <- get

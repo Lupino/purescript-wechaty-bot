@@ -27,6 +27,7 @@
     "purescript-console": "^4.1.0",
     "purescript-argonaut-core": "^4.0.0",
     "purescript-form-urlencoded": "^4.0.0",
-    "purescript-node-readline": "^4.0.0"
+    "purescript-node-readline": "^4.0.0",
+    "purescript-periodic": "Lupino/purescript-periodic#master"
   }
 }
