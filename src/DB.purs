@@ -1,6 +1,7 @@
 module DB
   ( Message
   , messageMod
+  , MessageType
   ) where
 
 import Prelude
@@ -34,3 +35,11 @@ messageMod = define sequelize "message"
   , repeat: {type: string 150, defaultValue: ""}
   }
   $ options []
+
+type MessageType =
+  { id :: Int
+  , user :: String
+  , message :: String
+  , sched_at :: Int
+  , repeat :: String
+  }

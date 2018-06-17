@@ -12,7 +12,7 @@ import Prelude
 
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
 import Control.Monad.Trans.Class (lift)
-import DB (messageMod)
+import DB (MessageType, messageMod)
 import Data.Array (elem, (:), delete, filter, mapWithIndex, (!!))
 import Data.Array (null) as A
 import Data.Dayjs (now, toUnixTime)
@@ -366,13 +366,7 @@ handlers Help = do
 
 handlers Empty = showPrompt_
 
-formatTask ::
-  { id :: Int
-  , user :: String
-  , message :: String
-  , sched_at :: Int
-  , repeat :: String
-  } -> String
+formatTask :: MessageType -> String
 formatTask t = joinWith "\n"
   [ "id: " <> show t.id
   , "user: " <> t.user

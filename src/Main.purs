@@ -14,7 +14,7 @@ import Data.String (trim, drop)
 import Database.Sequelize (sync)
 import Effect (Effect)
 import Effect.Aff (launchAff_)
-import Effect.Aff.Class (class MonadAff)
+import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log, error)
 import Periodic.Client (newClient)
@@ -25,6 +25,7 @@ import Wechaty (initWechaty, onScan, showQrcode, onLogin, onMessage, start, onEr
 import Wechaty.Contact (say, getContactName, ContactT, Contact)
 import Wechaty.Message (handleContact, handleRoom, room, self, from, content)
 import Wechaty.Room (getRoomTopic, RoomT, sayTo)
+import Worker (launchWorker)
 
 
 type ContactHandler m = ContactT (PlanT Chat.Options String m)
@@ -83,6 +84,7 @@ main = do
           liftEffect $ log "Logined"
           say "欢迎小主人归来"
           liftEffect $ launchRepl ps
+          liftAff launchWorker
         onMessage $ do
           r <- room
           s <- self
