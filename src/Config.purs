@@ -1,7 +1,9 @@
 module Config where
 
+
+
 searchHost :: String
-searchHost = "127.0.0.1:6000"
+searchHost = "111.230.171.235:6000"
 
 dsn :: String
 dsn = "sqlite:bot.db"

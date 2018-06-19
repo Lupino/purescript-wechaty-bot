@@ -4,7 +4,6 @@ if (typeof module === 'undefined') {
     var exports = core;
 } else {
     var types = require('./types'),
-        readline = require('./node_readline'),
         reader = require('./reader'),
         printer = require('./printer'),
         interop = require('./interop');
@@ -25,33 +24,6 @@ function str() {
     return Array.prototype.map.call(arguments,function(exp) {
         return printer._pr_str(exp, false);
     }).join("");
-}
-
-function prn() {
-    printer.println.apply({}, Array.prototype.map.call(arguments,function(exp) {
-        return printer._pr_str(exp, true);
-    }));
-}
-
-function println() {
-    printer.println.apply({}, Array.prototype.map.call(arguments,function(exp) {
-        return printer._pr_str(exp, false);
-    }));
-}
-
-function slurp(f) {
-    if (typeof require !== 'undefined') {
-        return require('fs').readFileSync(f, 'utf-8');
-    } else {
-        var req = new XMLHttpRequest();
-        req.open("GET", f, false);
-        req.send();
-        if (req.status == 200) {
-            return req.responseText;
-        } else {
-            throw new Error("Failed to slurp file: " + f);
-        }
-    }
 }
 
 
@@ -205,11 +177,7 @@ var ns = {'type': types._obj_type,
 
           'pr-str': pr_str,
           'str': str,
-          'prn': prn,
-          'println': println,
-          'readline': readline.readline,
           'read-string': reader.read_str,
-          'slurp': slurp,
           '<'  : function(a,b){return a<b;},
           '<=' : function(a,b){return a<=b;},
           '>'  : function(a,b){return a>b;},

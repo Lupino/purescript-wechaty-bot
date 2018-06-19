@@ -6,22 +6,26 @@ module Chat
 
 import Prelude
 
-import Plan.Trans (PlanT, respond, param, ActionT, paramPattern, options, exit)
-import Effect.Aff (Aff)
-import Effect.Aff.Class (liftAff)
+import Config (searchHost)
+import Data.Argonaut.Core (toString, toObject, toArray, Json, caseJsonObject)
+import Data.Array (catMaybes, concatMap, take)
+import Data.Either (Either(..))
+import Data.FormURLEncoded (fromArray, encode)
+import Data.Maybe (Maybe(..))
 import Data.String (trim, joinWith, drop)
+import Data.Tuple (Tuple(..))
+import Effect.Aff (Aff)
+import Effect.Exception (message)
+import Effect.Aff.Class (liftAff)
+import Effect.Class (liftEffect)
+import Foreign.Object (lookup)
+import Mal (rep, stepEnv)
+import Plan.Trans (ActionT, PlanT, exit, options, param, paramPattern, respond)
+import Utils (fetchJSON)
 import Wechaty.Contact (Contact) as C
 import Wechaty.Contact (getContactName)
 import Wechaty.Room (Room) as R
 import Wechaty.Room (memberAll, runRoomT, delete)
-import Data.Maybe (Maybe (..))
-import Data.FormURLEncoded (fromArray, encode)
-import Data.Tuple (Tuple (..))
-import Utils (fetchJSON)
-import Data.Argonaut.Core (toString, toObject, toArray, Json, caseJsonObject)
-import Foreign.Object (lookup)
-import Data.Array (catMaybes, concatMap, take)
-import Config (searchHost)
 
 data Options = Contact C.Contact
              | Room R.Room Boolean
@@ -64,6 +68,16 @@ removeRoomMember = do
         xs -> pure $ "找到:\n" <> (joinWith "\n" $ map getContactName xs)
     _ -> exit
 
+malHandler :: ActionM String
+malHandler = do
+  str <- trim <$> param "str"
+  env <- liftEffect stepEnv
+  r <- liftEffect $ rep env str
+  case r of
+    Left e -> pure $ message e
+    Right s -> pure s
+
+
 launchChat :: ChatM Unit
 launchChat = do
   respond (paramPattern "search:keyword:") searchHandler
@@ -72,3 +86,5 @@ launchChat = do
   respond (paramPattern "删除:name:") removeRoomMember
   respond (paramPattern "rm:name:") removeRoomMember
   respond (paramPattern "del:name:") removeRoomMember
+  respond (paramPattern ">:str:") malHandler
+  respond (paramPattern "&gt;:str:") malHandler

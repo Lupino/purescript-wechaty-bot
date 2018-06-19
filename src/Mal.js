@@ -1,11 +1,8 @@
-if (typeof module !== 'undefined') {
-    var types = require('./types');
-    var readline = require('./node_readline');
-    var reader = require('./reader');
-    var printer = require('./printer');
-    var Env = require('./env').Env;
-    var core = require('./core');
-}
+const types = require('./js/types');
+const reader = require('./js/reader');
+const printer = require('./js/printer');
+const Env = require('./js/env').Env;
+const core = require('./js/core');
 
 // read
 function READ(str) {
@@ -157,44 +154,40 @@ function PRINT(exp) {
     return printer._pr_str(exp, true);
 }
 
-// repl
-var repl_env = new Env();
-var rep = function(str) { return PRINT(EVAL(READ(str), repl_env)); };
+exports.stepEnv = function() {
+    // repl
+    var repl_env = new Env();
+    var rep = function(str) { return PRINT(EVAL(READ(str), repl_env)); };
 
-// core.js: defined using javascript
-for (var n in core.ns) { repl_env.set(types._symbol(n), core.ns[n]); }
-repl_env.set(types._symbol('eval'), function(ast) {
-    return EVAL(ast, repl_env); });
-repl_env.set(types._symbol('*ARGV*'), []);
+    // core.js: defined using javascript
+    for (var n in core.ns) { repl_env.set(types._symbol(n), core.ns[n]); }
+    repl_env.set(types._symbol('eval'), function(ast) {
+        return EVAL(ast, repl_env); });
+    repl_env.set(types._symbol('*ARGV*'), []);
 
-// core.mal: defined using the language itself
-rep("(def! *host-language* \"javascript\")")
-rep("(def! not (fn* (a) (if a false true)))");
-rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))");
-rep("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))");
-rep("(def! *gensym-counter* (atom 0))");
-rep("(def! gensym (fn* [] (symbol (str \"G__\" (swap! *gensym-counter* (fn* [x] (+ 1 x)))))))");
-rep("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) (if ~condvar ~condvar (or ~@(rest xs)))))))))");
-
-if (typeof process !== 'undefined' && process.argv.length > 2) {
-    repl_env.set(types._symbol('*ARGV*'), process.argv.slice(3));
-    rep('(load-file "' + process.argv[2] + '")');
-    process.exit(0);
+    // core.mal: defined using the language itself
+    rep("(def! *host-language* \"javascript\")")
+    rep("(def! not (fn* (a) (if a false true)))");
+    // rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))");
+    rep("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))");
+    rep("(def! *gensym-counter* (atom 0))");
+    rep("(def! gensym (fn* [] (symbol (str \"G__\" (swap! *gensym-counter* (fn* [x] (+ 1 x)))))))");
+    rep("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) (if ~condvar ~condvar (or ~@(rest xs)))))))))");
+    return repl_env;
 }
 
-// repl loop
-if (typeof require !== 'undefined' && require.main === module) {
-    // Synchronous node.js commandline mode
-    rep("(println (str \"Mal [\" *host-language* \"]\"))");
-    while (true) {
-        var line = readline.readline("user> ");
-        if (line === null) { break; }
-        try {
-            if (line) { printer.println(rep(line)); }
-        } catch (exc) {
-            if (exc instanceof reader.BlankException) { continue; }
-            if (exc.stack) { printer.println(exc.stack); }
-            else           { printer.println(exc); }
+exports._rep = function(repl_env) {
+  return function(str) {
+    return function(left) {
+      return function(right) {
+        return function() {
+          try {
+            return right(PRINT(EVAL(READ(str), repl_env)));
+          } catch (exc) {
+            return left(exc)
+          }
         }
+      }
     }
+  }
 }
