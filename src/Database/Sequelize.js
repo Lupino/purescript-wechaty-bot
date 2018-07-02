@@ -8,7 +8,7 @@ exports.connect = function(dsn) {
   };
 };
 
-exports['connect\''] = function(opts) {
+exports.connectOpts = function(opts) {
   return function() {
     return new Sequelize(opts);
   };
@@ -18,6 +18,7 @@ exports._query = function(sequelize) {
   return function(q) {
     return function(opts) {
       return function() {
+        opts.type = opts.type || sequelize.QueryTypes.SELECT;
         return sequelize.query(q, opts);
       };
     };
@@ -44,6 +45,7 @@ exports.uint = function(s) {
 };
 
 exports.int = Sequelize.INTEGER;
+exports.bigint = Sequelize.BIGINT;
 
 exports.timestamp = function() {
   return Math.floor(new Date() / 1000);
@@ -190,4 +192,8 @@ exports._sum = function(model) {
       };
     };
   };
+};
+
+exports.getTableName = function(model) {
+  return model.getTableName();
 };
