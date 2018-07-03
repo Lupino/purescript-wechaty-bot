@@ -197,3 +197,23 @@ exports._sum = function(model) {
 exports.getTableName = function(model) {
   return model.getTableName();
 };
+
+exports.hasOne = function(model) {
+  return function(target) {
+    return function(opts) {
+      return function() {
+        return model.hasOne(target, opts);
+      }
+    }
+  }
+}
+
+exports.hasMany = function(model) {
+  return function(target) {
+    return function(opts) {
+      return function() {
+        return model.hasMany(target, opts);
+      }
+    }
+  }
+}

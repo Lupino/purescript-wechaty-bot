@@ -35,6 +35,8 @@ module Database.Sequelize
 
   , sync
   , getTableName
+  , hasMany
+  , hasOne
   ) where
 
 import Prelude
@@ -176,3 +178,7 @@ sum :: forall a opts. ModelOf a -> String -> opts -> Aff Number
 sum mod field opts = liftEffect (_sum mod field opts) >>= toAff
 
 foreign import getTableName :: forall a. ModelOf a -> String
+
+foreign import hasOne :: forall a b opts. ModelOf a -> ModelOf b -> opts -> Effect Unit
+
+foreign import hasMany :: forall a b opts. ModelOf a -> ModelOf b -> opts -> Effect Unit
