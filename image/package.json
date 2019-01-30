@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "description": "A wechat assistant",
   "dependencies": {
-    "dayjs": "^1.6.9",
+    "dayjs": "^1.8.0",
     "higher-order-helper": "^1.0.3",
-    "node-periodic": "^1.1.1",
+    "node-periodic": "^1.2.3",
     "qrcode-terminal": "^0.12.0",
-    "sequelize": "^4.37.10",
-    "sqlite3": "^4.0.0",
-    "wechaty": "^0.14.10"
+    "sequelize": "^4.42.0",
+    "sqlite3": "^4.0.6",
+    "wechaty": "^0.22.6"
   },
   "author": {
     "name": "Li Meng Jun",

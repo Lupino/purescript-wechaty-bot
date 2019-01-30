@@ -133,7 +133,9 @@ exports._findAndCountAll = function(model) {
 exports._findOrCreate = function(model) {
   return function(opts) {
     return function() {
-      return model.findOrCreate(opts).then(toJSON);
+      return model.findOrCreate(opts).then(function(o) {
+        return toJSON(o[0].dataValues);
+      });
     };
   };
 };
@@ -203,17 +205,17 @@ exports.hasOne = function(model) {
     return function(opts) {
       return function() {
         return model.hasOne(target, opts);
-      }
-    }
-  }
-}
+      };
+    };
+  };
+};
 
 exports.hasMany = function(model) {
   return function(target) {
     return function(opts) {
       return function() {
         return model.hasMany(target, opts);
-      }
-    }
-  }
-}
+      };
+    };
+  };
+};

@@ -12,37 +12,36 @@ import Prelude
 
 import Control.Monad.Reader (ReaderT, runReaderT, ask)
 import Control.Monad.Trans.Class (lift)
-import DB (MessageType, messageMod)
+import DB (Message (..), messageMod)
 import Data.Array (elem, (:), delete, filter, mapWithIndex, (!!))
 import Data.Array (null) as A
 import Data.Dayjs (now, toUnixTime)
-import Data.Either (Either(..))
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (trim, drop, length, null, joinWith, takeWhile, dropWhile, codePointFromChar)
 import Database.Sequelize (findOne, findAll, create, destory, update) as DB
 import Effect (Effect)
-import Effect.Aff (Aff, runAff_)
+import Effect.Aff (Aff, launchAff_)
 import Effect.Class (liftEffect)
 import Effect.Console (error)
-import Effect.Exception (message)
 import Effect.Ref (Ref, new, read, modify)
 import Node.ReadLine (Interface, createConsoleInterface, setPrompt, setLineHandler, prompt, Completer)
 import Periodic.Client (Client, submitJob)
 import Utils (formatDate, adjustTime, startsWith)
-import Wechaty.Contact (Contact, findAll, getContactName, runContactT, say, self)
-import Wechaty.Room (Room, getRoomTopic, runRoomT)
-import Wechaty.Room (findAll, say) as R
+import Wechaty.Contact (Contact, name, runContactT, say) as C
+import Wechaty.Room (Room, topic, runRoomT, say) as R
+import Wechaty (runWechatyT, Wechaty, findContactAll, findRoomAll, userSelf)
+import Data.Traversable (for)
 
 type Whitelist = Array String
 
-data StateType = IsContact Contact
-               | IsRoom Room
-               | IsManager Contact
+data StateType = IsContact C.Contact
+               | IsRoom R.Room
+               | IsManager C.Contact
                | IsEmpty
 
-data Select = SelectRoom (Array Room)
-            | SelectContact (Array Contact)
+data Select = SelectRoom (Array R.Room)
+            | SelectContact (Array C.Contact)
 
 type ReplState =
   { whitelist :: Whitelist
@@ -50,30 +49,35 @@ type ReplState =
   , select :: Maybe Select
   , state :: StateType
   , periodic :: Client
+  , wechaty :: Wechaty
   }
 
-type Repl a = ReaderT (Ref ReplState) Effect a
+type Repl a = ReaderT (Ref ReplState) Aff a
 
-runRepl :: forall a. Ref ReplState -> Repl a -> Effect a
+runRepl :: forall a. Ref ReplState -> Repl a -> Aff a
 runRepl s m = runReaderT m s
 
-initReplState :: Client -> Effect (Ref ReplState)
-initReplState c = do
+initReplState :: Wechaty -> Client -> Effect (Ref ReplState)
+initReplState w c = do
   rl <- createConsoleInterface completion
-  new {whitelist: [], interface: rl, select: Nothing, state: IsEmpty, periodic: c}
+  new {whitelist: [], interface: rl, select: Nothing, state: IsEmpty, periodic: c, wechaty: w}
 
 get :: Repl ReplState
 get = do
   ref <- ask
-  lift $ read ref
+  liftEffect $ read ref
 
-setContactPrompt :: Contact -> Interface -> Effect Unit
-setContactPrompt c = setPrompt ps (length ps)
-  where ps = "Contact<<" <> getContactName c <> ">> "
+setContactPrompt :: C.Contact -> Interface -> Aff Unit
+setContactPrompt c rl = do
+  n <- C.runContactT c C.name
+  let ps = "Contact<<" <> n <> ">> "
+  liftEffect $ setPrompt ps (length ps) rl
 
-setRoomPrompt :: Room -> Interface -> Effect Unit
-setRoomPrompt r = setPrompt ps (length ps)
-  where ps = "Room<<" <> getRoomTopic r <> ">> "
+setRoomPrompt :: R.Room -> Interface -> Aff Unit
+setRoomPrompt r rl = do
+  t <- R.runRoomT r R.topic
+  let ps = "Room<<" <> t <> ">> "
+  liftEffect $ setPrompt ps (length ps) rl
 
 addWhitelist :: String -> Whitelist -> Whitelist
 addWhitelist xs wl | elem xs wl = wl
@@ -88,28 +92,30 @@ clearWhitelist _ _ = []
 replaceWhitelist :: (String -> Whitelist -> Whitelist) -> String -> Repl Unit
 replaceWhitelist f xs = do
   ref <- ask
-  void $ lift $ modify (\ps -> ps {whitelist = f xs ps.whitelist}) ref
+  void $ liftEffect $ modify (\ps -> ps {whitelist = f xs ps.whitelist}) ref
 
 adjustSelect :: Maybe Select -> Repl Unit
 adjustSelect xs = do
   ref <- ask
-  void $ lift $ modify (\ps -> ps {select = xs}) ref
+  void $ liftEffect $ modify (\ps -> ps {select = xs}) ref
 
-switch :: forall a. (a -> Interface -> Effect Unit) -> (a -> StateType) -> a -> Repl Unit
+switch :: forall a. (a -> Interface -> Aff Unit) -> (a -> StateType) -> a -> Repl Unit
 switch p f a = do
   ref <- ask
-  ps <- lift $ modify (\rs -> rs {state = f a}) ref
+  ps <- liftEffect $ modify (\rs -> rs {state = f a}) ref
   lift $ p a ps.interface
 
-switchContact :: Contact -> Repl Unit
+switchContact :: C.Contact -> Repl Unit
 switchContact = switch setContactPrompt IsContact
 
 switchManager :: Repl Unit
 switchManager = do
-  s <- lift self
-  switch setContactPrompt IsManager s
+  ref <- ask
+  ps <- get
+  c <- lift $ runWechatyT launchAff_ ps.wechaty userSelf
+  switch setContactPrompt IsManager c
 
-switchRoom :: Room -> Repl Unit
+switchRoom :: R.Room -> Repl Unit
 switchRoom room = switch setRoomPrompt IsRoom room
 
 data Cmd =
@@ -204,37 +210,39 @@ help =
 mkLineHandler
   :: Ref ReplState -> (Cmd -> Repl Unit)
   -> String -> Effect Unit
-mkLineHandler ps f = runRepl ps <<< f <<< parseCmd
+mkLineHandler ps f = launchAff_ <<< runRepl ps <<< f <<< parseCmd
 
 handlers :: Cmd -> Repl Unit
 handlers (FindContact n) = do
-  ref <- ask
   ps <- get
-  lift $ flip runAff_ (findAll n) $ \r -> do
-    case r of
-      (Left e) -> error $ "Error: " <> message e
-      (Right []) -> error $ "Contact<<" <> n <> ">> Not Found."
-      (Right [c]) -> runRepl ref $ switchContact c
-      (Right xs) -> do
-         error $ "Found Contact:\n"
-               <> (joinWith "\n" $ mapWithIndex (\i c -> show i <> ". " <> getContactName c) xs)
-               <> "\n.select INT 选择用户"
-         runRepl ref $ adjustSelect (Just (SelectContact xs))
-    showPrompt ps
+  contacts <- lift $ runWechatyT launchAff_ ps.wechaty $ findContactAll n
+  case contacts of
+    [] -> liftEffect $ error $ "Contact<<" <> n <> ">> Not Found."
+    [c] -> switchContact c
+    xs -> do
+      ns <- lift $ for xs $ \x -> C.runContactT x C.name
+      liftEffect
+        $ error
+        $ "Found Contact:\n"
+        <> (joinWith "\n" $ mapWithIndex (\i c -> show i <> ". " <> c) ns)
+        <> "\n.select INT 选择用户"
+      adjustSelect (Just (SelectContact xs))
+      showPrompt
 handlers (FindRoom n) = do
-  ref <- ask
   ps <- get
-  lift $ flip runAff_ (R.findAll n) $ \r -> do
-    case r of
-      (Left e) -> error $ "Error: " <> message e
-      (Right []) ->  error $ "Room<<" <> n <> ">> Not Found."
-      (Right [c]) -> runRepl ref $ switchRoom c
-      (Right xs) -> do
-         error $ "Found Room:\n"
-               <> (joinWith "\n" $ mapWithIndex (\i c -> show i <> ". " <> getRoomTopic c) xs)
-               <> "\n.select INT 选择聊天群"
-         runRepl ref $ adjustSelect (Just (SelectRoom xs))
-    showPrompt ps
+  rooms <- lift $ runWechatyT launchAff_ ps.wechaty $ findRoomAll n
+  case rooms of
+    [] -> liftEffect $ error $ "Room<<" <> n <> ">> Not Found."
+    [r] -> switchRoom r
+    xs -> do
+      ns <- lift $ for xs $ \x -> R.runRoomT x R.topic
+      liftEffect
+        $ error
+        $ "Found Room:\n"
+        <> (joinWith "\n" $ mapWithIndex (\i c -> show i <> ". " <> c) ns)
+        <> "\n.select INT 选择聊天群"
+      adjustSelect (Just (SelectRoom xs))
+      showPrompt
 
 handlers (Select id0) = do
   ps <- get
@@ -254,32 +262,25 @@ handlers (Select id0) = do
     Just (SelectRoom [v]) -> switchRoom v
     _ -> pure unit
 
-  showPrompt_
-
+  showPrompt
 
 handlers (Msg m) = do
   ps <- get
-  lift $ flip runAff_ (sendMessage ps.state m) $ \r -> do
-    case r of
-      (Left e) -> error $ "Error: " <> message e
-      (Right _) -> pure unit
-    showPrompt ps
+  lift $ sendMessage ps.state m
+  showPrompt
 
-handlers (AddWhitelist xs) = replaceWhitelist addWhitelist xs *> showPrompt_
-handlers (RemoveWhitelist xs) = replaceWhitelist removeWhitelist xs *> showPrompt_
-handlers ClearWhitelist = replaceWhitelist clearWhitelist "" *> showPrompt_
+handlers (AddWhitelist xs) = replaceWhitelist addWhitelist xs *> showPrompt
+handlers (RemoveWhitelist xs) = replaceWhitelist removeWhitelist xs *> showPrompt
+handlers ClearWhitelist = replaceWhitelist clearWhitelist "" *> showPrompt
 handlers ShowWhitelist = do
   ps <- get
-  lift $ error $ "Whitelist:\n" <> joinWith "\n" ps.whitelist
-  showPrompt_
+  liftEffect $ error $ "Whitelist:\n" <> joinWith "\n" ps.whitelist
+  showPrompt
 
 handlers (AddTask msg) = do
   ps <- get
-  lift $ flip runAff_ (go ps.state) $ \r -> do
-    case r of
-      (Left e) -> error $ "Error: " <> message e
-      (Right _) -> pure unit
-    showPrompt ps
+  lift $ go ps.state
+  showPrompt
 
   where go :: StateType -> Aff Unit
         go (IsContact c) = saveContactTask c
@@ -287,48 +288,40 @@ handlers (AddTask msg) = do
         go (IsManager c) = saveContactTask c
         go IsEmpty = pure unit
 
-        saveContactTask :: Contact -> Aff Unit
+        saveContactTask :: C.Contact -> Aff Unit
         saveContactTask c = do
-          t <- DB.create messageMod {user: "user-" <> getContactName c, message: msg}
+          n <- C.runContactT c C.name
+          t <- DB.create messageMod {user: "user-" <> n, message: msg}
           liftEffect $ showHelp t
 
-        saveRoomTask :: Room -> Aff Unit
+        saveRoomTask :: R.Room -> Aff Unit
         saveRoomTask r = do
-          t <- DB.create messageMod {user: "room-" <> getRoomTopic r, message: msg}
+          rt <- R.runRoomT r R.topic
+          t <- DB.create messageMod {user: "room-" <> rt, message: msg}
           liftEffect $ showHelp t
 
-        showHelp :: forall task. {id :: Int | task} -> Effect Unit
-        showHelp t =
+        showHelp :: Message -> Effect Unit
+        showHelp (Message t) =
           error $ "Task[" <>  show t.id <> "] created.\n"
             <> "Use task schedin " <> show t.id
             <> " STRING  to set the sched time"
 
 handlers ListTask = do
-  ps <- get
-  lift $ flip runAff_ (DB.findAll messageMod {}) $ \r -> do
-    case r of
-      Left e -> error $ message e
-      Right r0 -> error $ joinWith "\n" $ map formatTask r0
-
-    showPrompt ps
+  r0 <- lift $ DB.findAll messageMod {}
+  liftEffect $ error $ joinWith "\n" $ map formatTask r0
+  showPrompt
 
 handlers (GetTask id) = do
-  ps <- get
-  lift $ flip runAff_ (DB.findOne messageMod {where: {id: id}}) $ \r -> do
-    case r of
-      Left e -> error $ message e
-      Right Nothing -> error $ "Not found."
-      Right (Just t) -> error $ formatTask t
-    showPrompt ps
+  r <- lift $ DB.findOne messageMod {where: {id: id}}
+  case r of
+    Nothing -> liftEffect $ error $ "Not Found."
+    Just t -> liftEffect $ error $ formatTask t
+  showPrompt
 
 handlers (SetTaskSchedIn id later) = do
   ps <- get
-  lift $ flip runAff_ (go ps) $ \r -> do
-    case r of
-      Left e -> error $ message e
-      Right _ -> pure unit
-
-    showPrompt ps
+  lift $ go ps
+  showPrompt
 
   where go :: ReplState -> Aff Unit
         go ps = do
@@ -342,32 +335,26 @@ handlers (SetTaskSchedIn id later) = do
               liftEffect $ error $ "Modify sched time done."
 
 handlers (SetTaskRepeat id repeat) = do
-  ps <- get
-  lift $ flip runAff_ (DB.update messageMod {repeat: repeat} {where: {id: id}}) $ \r -> do
-    case r of
-      Left e -> error $ message e
-      Right _ -> error "Repeat changed."
-
-    showPrompt ps
+  lift $ DB.update messageMod {repeat: repeat} {where: {id: id}}
+  liftEffect $ error "Repeat changed."
+  showPrompt
 
 handlers (DelTask id) = do
   ps <- get
-  lift $ flip runAff_ (DB.destory messageMod {where: {id: id}}) $ \r -> do
-    case r of
-      Left e -> error $ message e
-      Right _ -> error $ "Task " <> show id <> " deleted."
-    showPrompt ps
+  lift $ DB.destory messageMod {where: {id: id}}
+  liftEffect $ error $ "Task " <> show id <> " deleted."
+  showPrompt
 
-handlers Exit = switchManager *> showPrompt_
+handlers Exit = switchManager *> showPrompt
 
 handlers Help = do
-  lift $ error $ "\n" <> joinWith "\n" help
-  showPrompt_
+  liftEffect $ error $ "\n" <> joinWith "\n" help
+  showPrompt
 
-handlers Empty = showPrompt_
+handlers Empty = showPrompt
 
-formatTask :: MessageType -> String
-formatTask t = joinWith "\n"
+formatTask :: Message -> String
+formatTask (Message t) = joinWith "\n"
   [ "id: " <> show t.id
   , "user: " <> t.user
   , "message: " <> t.message
@@ -376,23 +363,22 @@ formatTask t = joinWith "\n"
   ]
 
 sendMessage :: StateType -> String -> Aff Unit
-sendMessage (IsContact c) = runContactT c <<< say
-sendMessage (IsRoom c) = runRoomT c <<< R.say
-sendMessage (IsManager c) = runContactT c <<< say
+sendMessage (IsContact c) = C.runContactT c <<< C.say
+sendMessage (IsRoom c) = R.runRoomT c <<< R.say
+sendMessage (IsManager c) = C.runContactT c <<< C.say
 sendMessage IsEmpty = \_ -> pure unit
 
-launchRepl :: Ref ReplState -> Effect Unit
+launchRepl :: Ref ReplState -> Aff Unit
 launchRepl ref = do
   runRepl ref switchManager
-  ps <- read ref
-  setLineHandler ps.interface (mkLineHandler ref handlers)
-  showPrompt ps
+  ps <- liftEffect $ read ref
+  liftEffect $ setLineHandler ps.interface (mkLineHandler ref handlers)
+  runRepl ref showPrompt
 
-showPrompt :: ReplState -> Effect Unit
-showPrompt ps = prompt ps.interface
-
-showPrompt_ :: Repl Unit
-showPrompt_ = lift <<< showPrompt =<< get
+showPrompt :: Repl Unit
+showPrompt = do
+  ps <- get
+  liftEffect $ prompt ps.interface
 
 checkWhitelist :: Ref ReplState -> String -> Effect Unit -> Effect Unit
 checkWhitelist ref h io = do

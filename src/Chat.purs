@@ -22,10 +22,9 @@ import Foreign.Object (lookup)
 import Mal (rep, stepEnv)
 import Plan.Trans (ActionT, PlanT, exit, options, param, paramPattern, respond)
 import Utils (fetchJSON)
-import Wechaty.Contact (Contact) as C
-import Wechaty.Contact (getContactName)
+import Wechaty.Contact (Contact, name') as C
 import Wechaty.Room (Room) as R
-import Wechaty.Room (memberAll, runRoomT, delete)
+import Wechaty.Room (memberAll, runRoomT, del)
 
 data Options = Contact C.Contact
              | Room R.Room Boolean
@@ -63,9 +62,9 @@ removeRoomMember = do
       case cs of
         [] -> pure "没有找到用户"
         [c] -> do
-          delete c
+          del c
           pure "删除成功"
-        xs -> pure $ "找到:\n" <> (joinWith "\n" $ map getContactName xs)
+        xs -> pure $ "找到:\n" <> (joinWith "\n" $ map C.name' xs)
     _ -> exit
 
 malHandler :: ActionM String
