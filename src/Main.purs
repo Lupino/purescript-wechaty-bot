@@ -98,7 +98,7 @@ main = do
               liftEffect
                 $ checkWhitelist ps n
                 $ error $ "From<<" <> n <> ">>: " <> msg
-              handleContact contactHandler
+              when (not s) $ handleContact contactHandler
             Just r0 -> do
               t <- runRoomT r0 topic
               n <- runContactT c name
