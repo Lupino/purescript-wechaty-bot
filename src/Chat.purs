@@ -9,17 +9,13 @@ import Prelude
 import Config (searchHost)
 import Data.Argonaut.Core (toString, toObject, toArray, Json, caseJsonObject)
 import Data.Array (catMaybes, concatMap, take)
-import Data.Either (Either(..))
 import Data.FormURLEncoded (fromArray, encode)
 import Data.Maybe (Maybe(..))
 import Data.String (trim, joinWith, drop)
 import Data.Tuple (Tuple(..))
 import Effect.Aff (Aff)
-import Effect.Exception (message)
 import Effect.Aff.Class (liftAff)
-import Effect.Class (liftEffect)
 import Foreign.Object (lookup)
-import Mal (rep, stepEnv)
 import Plan.Trans (ActionT, PlanT, exit, options, param, paramPattern, respond)
 import Utils (fetchJSON)
 import Wechaty.Contact (Contact, name') as C
@@ -67,15 +63,6 @@ removeRoomMember = do
         xs -> pure $ "找到:\n" <> (joinWith "\n" $ map C.name' xs)
     _ -> exit
 
-malHandler :: ActionM String
-malHandler = do
-  str <- trim <$> param "str"
-  env <- liftEffect stepEnv
-  r <- liftEffect $ rep env str
-  case r of
-    Left e -> pure $ message e
-    Right s -> pure s
-
 
 launchChat :: ChatM Unit
 launchChat = do
@@ -85,5 +72,3 @@ launchChat = do
   respond (paramPattern "删除:name:") removeRoomMember
   respond (paramPattern "rm:name:") removeRoomMember
   respond (paramPattern "del:name:") removeRoomMember
-  respond (paramPattern ">:str:") malHandler
-  respond (paramPattern "&gt;:str:") malHandler
