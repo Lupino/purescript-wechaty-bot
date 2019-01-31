@@ -24,6 +24,7 @@ import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
 import Effect.Class (liftEffect)
 import Effect.Console (error)
+import Effect.Exception (message)
 import Effect.Ref (Ref, new, read, modify)
 import Node.ReadLine (Interface, createConsoleInterface, setPrompt, setLineHandler, prompt, Completer)
 import Periodic.Client (Client, submitJob)
@@ -32,6 +33,8 @@ import Wechaty.Contact (Contact, name, runContactT, say) as C
 import Wechaty.Room (Room, topic, runRoomT, say) as R
 import Wechaty (runWechatyT, Wechaty, findContactAll, findRoomAll, userSelf)
 import Data.Traversable (for)
+import Data.Either (Either (..))
+import Control.Monad.Error.Class (try)
 
 type Whitelist = Array String
 
@@ -210,7 +213,15 @@ help =
 mkLineHandler
   :: Ref ReplState -> (Cmd -> Repl Unit)
   -> String -> Effect Unit
-mkLineHandler ps f = launchAff_ <<< runRepl ps <<< f <<< parseCmd
+mkLineHandler ps f = launchAff_ <<< runRepl ps <<< tryError <<< f <<< parseCmd
+  where tryError :: Repl Unit -> Repl Unit
+        tryError aff = do
+          r <- try aff
+          case r of
+            Left e -> liftEffect $ error $ message e
+            Right _ -> pure unit
+          showPrompt
+
 
 handlers :: Cmd -> Repl Unit
 handlers (FindContact n) = do
@@ -227,7 +238,6 @@ handlers (FindContact n) = do
         <> (joinWith "\n" $ mapWithIndex (\i c -> show i <> ". " <> c) ns)
         <> "\n.select INT 选择用户"
       adjustSelect (Just (SelectContact xs))
-      showPrompt
 handlers (FindRoom n) = do
   ps <- get
   rooms <- lift $ runWechatyT launchAff_ ps.wechaty $ findRoomAll n
@@ -242,7 +252,6 @@ handlers (FindRoom n) = do
         <> (joinWith "\n" $ mapWithIndex (\i c -> show i <> ". " <> c) ns)
         <> "\n.select INT 选择聊天群"
       adjustSelect (Just (SelectRoom xs))
-      showPrompt
 
 handlers (Select id0) = do
   ps <- get
@@ -262,25 +271,21 @@ handlers (Select id0) = do
     Just (SelectRoom [v]) -> switchRoom v
     _ -> pure unit
 
-  showPrompt
 
 handlers (Msg m) = do
   ps <- get
   lift $ sendMessage ps.state m
-  showPrompt
 
-handlers (AddWhitelist xs) = replaceWhitelist addWhitelist xs *> showPrompt
-handlers (RemoveWhitelist xs) = replaceWhitelist removeWhitelist xs *> showPrompt
-handlers ClearWhitelist = replaceWhitelist clearWhitelist "" *> showPrompt
+handlers (AddWhitelist xs) = replaceWhitelist addWhitelist xs
+handlers (RemoveWhitelist xs) = replaceWhitelist removeWhitelist xs
+handlers ClearWhitelist = replaceWhitelist clearWhitelist ""
 handlers ShowWhitelist = do
   ps <- get
   liftEffect $ error $ "Whitelist:\n" <> joinWith "\n" ps.whitelist
-  showPrompt
 
 handlers (AddTask msg) = do
   ps <- get
   lift $ go ps.state
-  showPrompt
 
   where go :: StateType -> Aff Unit
         go (IsContact c) = saveContactTask c
@@ -309,19 +314,16 @@ handlers (AddTask msg) = do
 handlers ListTask = do
   r0 <- lift $ DB.findAll messageMod {}
   liftEffect $ error $ joinWith "\n" $ map formatTask r0
-  showPrompt
 
 handlers (GetTask id) = do
   r <- lift $ DB.findOne messageMod {where: {id: id}}
   case r of
     Nothing -> liftEffect $ error $ "Not Found."
     Just t -> liftEffect $ error $ formatTask t
-  showPrompt
 
 handlers (SetTaskSchedIn id later) = do
   ps <- get
   lift $ go ps
-  showPrompt
 
   where go :: ReplState -> Aff Unit
         go ps = do
@@ -337,21 +339,17 @@ handlers (SetTaskSchedIn id later) = do
 handlers (SetTaskRepeat id repeat) = do
   lift $ DB.update messageMod {repeat: repeat} {where: {id: id}}
   liftEffect $ error "Repeat changed."
-  showPrompt
 
 handlers (DelTask id) = do
   ps <- get
   lift $ DB.destory messageMod {where: {id: id}}
   liftEffect $ error $ "Task " <> show id <> " deleted."
-  showPrompt
 
-handlers Exit = switchManager *> showPrompt
+handlers Exit = switchManager
 
-handlers Help = do
-  liftEffect $ error $ "\n" <> joinWith "\n" help
-  showPrompt
+handlers Help = liftEffect $ error $ "\n" <> joinWith "\n" help
 
-handlers Empty = showPrompt
+handlers Empty = pure unit
 
 formatTask :: Message -> String
 formatTask (Message t) = joinWith "\n"
