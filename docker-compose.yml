@@ -1,0 +1,17 @@
+version: "3"
+services:
+  periodicd:
+    restart: always
+    image: lupino/periodicd:1.1.2.0
+    environment:
+    - PERIODIC_PORT=tcp://:5000
+  wechaty:
+    restart: always
+    image: bot
+    build: .
+    depends_on:
+    - periodicd
+    environment:
+    - PERIODIC_HOST=periodicd
+    stdin_open: true
+    tty: true
