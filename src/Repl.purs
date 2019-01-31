@@ -15,7 +15,7 @@ import Control.Monad.Trans.Class (lift)
 import DB (Message (..), messageMod)
 import Data.Array (elem, (:), delete, filter, mapWithIndex, (!!))
 import Data.Array (null) as A
-import Data.Dayjs (now, toUnixTime)
+import Data.Dayjs (getDayjs, toUnixTime)
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (trim, drop, length, null, joinWith, takeWhile, dropWhile, codePointFromChar)
@@ -331,7 +331,7 @@ handlers (SetTaskSchedIn id later) = do
           case t of
             Nothing -> liftEffect $ error $ "Task " <> show id <> " is not found."
             Just _ -> do
-              schedat <- liftEffect $ toUnixTime <<< adjustTime later <$> now
+              schedat <- liftEffect $ toUnixTime <<< adjustTime later <$> getDayjs
               DB.update messageMod {sched_at: schedat} {where: {id: id}}
               submitJob ps.periodic {name: show id, func: "send-message", sched_at: schedat}
               liftEffect $ error $ "Modify sched time done."
