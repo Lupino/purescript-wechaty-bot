@@ -2,7 +2,7 @@ version: "3"
 services:
   periodicd:
     restart: always
-    image: lupino/periodicd:1.1.3.0
+    image: lupino/periodicd:1.1.4.0
     environment:
     - PERIODIC_PORT=tcp://:5000
   wechaty:

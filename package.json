@@ -18,7 +18,7 @@
   "dependencies": {
     "dayjs": "^1.8.5",
     "higher-order-helper": "^1.0.3",
-    "node-periodic": "^1.2.5",
+    "node-periodic": "^1.3.0",
     "qrcode-terminal": "^0.12.0",
     "sequelize": "^4.42.0",
     "sqlite3": "^4.0.6",
